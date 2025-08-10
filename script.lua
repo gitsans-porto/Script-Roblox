@@ -1,21 +1,21 @@
 --[[
-    Skrip Universal v18.0 - Teleport & Click-to-Fling (Edisi Final)
+    Skrip Universal v19.0 - Edisi "Resilience"
     
     Pembaruan Kritis:
-    - Menggunakan metode "Glitched Physics" yang 100% client-side.
-    - Membuat part tak terlihat di dalam target untuk memaksa server melemparnya.
-    - Metode ini tidak memerlukan akses ke server atau RemoteEvents.
-    - Dirancang untuk keandalan maksimal di semua game.
+    - Menggunakan pcall untuk mencegah crash total jika UI gagal dibuat.
+    - Menggunakan teknik "Parenting Tertunda" untuk mencoba melewati deteksi keamanan.
+    - Menambahkan pesan debug yang lebih detail untuk melacak titik kegagalan.
+    - Fling tetap menggunakan metode "Glitched Physics" yang paling andal.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if _G.UniversalMultiToolLoaded_v18 then
-    print("Skrip Multi-Tool v18 sudah berjalan.")
+if _G.UniversalMultiToolLoaded_v19 then
+    print("Skrip Multi-Tool v19 sudah berjalan.")
     return
 end
-_G.UniversalMultiToolLoaded_v18 = true
+_G.UniversalMultiToolLoaded_v19 = true
 
-print("Memulai Skrip Multi-Tool Universal v18.0...")
+print("Memulai Skrip Multi-Tool Universal v19.0...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -30,76 +30,85 @@ local localPlayer = Players.LocalPlayer
 local clickFlingActive = false
 local inputConnection = nil
 
--- Membuat ScreenGui
-local screenGui = Instance.new("ScreenGui"); screenGui.Name = "UniversalMultiToolGUI_v18"; screenGui.ResetOnSpawn = false; screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+-- === FUNGSI UTAMA PEMBUATAN UI (DIBUNGKUS DALAM PCALL) ===
+local success, uiElements = pcall(function()
+    print("Debug: Memulai pembuatan UI di dalam pcall...")
 
--- Membuat Frame Utama
-local mainFrame = Instance.new("Frame"); mainFrame.Name = "MainFrame"; local originalSize = UDim2.new(0, 300, 0, 320); mainFrame.Size = originalSize; mainFrame.Position = UDim2.new(0.5, -150, 0.5, -160); mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37); mainFrame.BorderColor3 = Color3.fromRGB(48, 51, 57); mainFrame.BorderSizePixel = 1; mainFrame.ClipsDescendants = true; mainFrame.Parent = screenGui
+    local gui = {}
+    
+    gui.screenGui = Instance.new("ScreenGui"); gui.screenGui.Name = "UniversalMultiToolGUI_v19"; gui.screenGui.ResetOnSpawn = false; gui.screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    print("Debug: ScreenGui dibuat.")
 
--- Membuat Title Bar
-local titleBar = Instance.new("Frame", mainFrame); titleBar.Name = "TitleBar"; titleBar.Size = UDim2.new(1, 0, 0, 30); titleBar.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
-local titleLabel = Instance.new("TextLabel", titleBar); titleLabel.Size = UDim2.new(1, -60, 1, 0); titleLabel.Position = UDim2.new(0, 10, 0, 0); titleLabel.BackgroundColor3 = titleBar.BackgroundColor3; titleLabel.Font = Enum.Font.SourceSansSemibold; titleLabel.Text = "Multi-Tool"; titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255); titleLabel.TextSize = 16; titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-local closeButton = Instance.new("TextButton", titleBar); closeButton.Size = UDim2.new(0, 30, 1, 0); closeButton.Position = UDim2.new(1, -30, 0, 0); closeButton.BackgroundColor3 = titleBar.BackgroundColor3; closeButton.Font = Enum.Font.SourceSansBold; closeButton.Text = "X"; closeButton.TextColor3 = Color3.fromRGB(200, 200, 200); closeButton.TextSize = 20
-local minimizeButton = Instance.new("TextButton", titleBar); minimizeButton.Size = UDim2.new(0, 30, 1, 0); minimizeButton.Position = UDim2.new(1, -60, 0, 0); minimizeButton.BackgroundColor3 = titleBar.BackgroundColor3; minimizeButton.Font = Enum.Font.SourceSansBold; minimizeButton.Text = "_"; minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200); minimizeButton.TextSize = 20
+    gui.mainFrame = Instance.new("Frame", gui.screenGui); gui.mainFrame.Name = "MainFrame"; gui.mainFrame.Size = UDim2.new(0, 300, 0, 320); gui.mainFrame.Position = UDim2.new(0.5, -150, 0.5, -160); gui.mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37); gui.mainFrame.BorderColor3 = Color3.fromRGB(48, 51, 57); gui.mainFrame.BorderSizePixel = 1; gui.mainFrame.ClipsDescendants = true
+    print("Debug: MainFrame dibuat.")
 
--- Konten di dalam Frame
-local contentHolder = Instance.new("Frame", mainFrame); contentHolder.Name = "ContentHolder"; contentHolder.Size = UDim2.new(1, 0, 1, -30); contentHolder.Position = UDim2.new(0, 0, 0, 30); contentHolder.BackgroundTransparency = 1
+    gui.titleBar = Instance.new("Frame", gui.mainFrame); gui.titleBar.Name = "TitleBar"; gui.titleBar.Size = UDim2.new(1, 0, 0, 30); gui.titleBar.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
+    gui.titleLabel = Instance.new("TextLabel", gui.titleBar); gui.titleLabel.Size = UDim2.new(1, -60, 1, 0); gui.titleLabel.Position = UDim2.new(0, 10, 0, 0); gui.titleLabel.BackgroundColor3 = gui.titleBar.BackgroundColor3; gui.titleLabel.Font = Enum.Font.SourceSansSemibold; gui.titleLabel.Text = "Multi-Tool"; gui.titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255); gui.titleLabel.TextSize = 16; gui.titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    gui.closeButton = Instance.new("TextButton", gui.titleBar); gui.closeButton.Size = UDim2.new(0, 30, 1, 0); gui.closeButton.Position = UDim2.new(1, -30, 0, 0); gui.closeButton.BackgroundColor3 = gui.titleBar.BackgroundColor3; gui.closeButton.Font = Enum.Font.SourceSansBold; gui.closeButton.Text = "X"; gui.closeButton.TextColor3 = Color3.fromRGB(200, 200, 200); gui.closeButton.TextSize = 20
+    gui.minimizeButton = Instance.new("TextButton", gui.titleBar); gui.minimizeButton.Size = UDim2.new(0, 30, 1, 0); gui.minimizeButton.Position = UDim2.new(1, -60, 0, 0); gui.minimizeButton.BackgroundColor3 = gui.titleBar.BackgroundColor3; gui.minimizeButton.Font = Enum.Font.SourceSansBold; gui.minimizeButton.Text = "_"; gui.minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200); gui.minimizeButton.TextSize = 20
+    print("Debug: TitleBar dibuat.")
 
--- Navbar
-local navBar = Instance.new("Frame", contentHolder); navBar.Name = "NavBar"; navBar.Size = UDim2.new(1, -20, 0, 30); navBar.Position = UDim2.new(0, 10, 0, 10); navBar.BackgroundColor3 = Color3.fromRGB(40, 42, 47)
-local navLayout = Instance.new("UIListLayout", navBar); navLayout.FillDirection = Enum.FillDirection.Horizontal
-local navTeleportBtn = Instance.new("TextButton", navBar); navTeleportBtn.Name = "NavTeleport"; navTeleportBtn.Size = UDim2.new(0.5, 0, 1, 0); navTeleportBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); navTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255); navTeleportBtn.Font = Enum.Font.SourceSansBold; navTeleportBtn.Text = "Teleport"; navTeleportBtn.TextSize = 14
-local navFlingBtn = Instance.new("TextButton", navBar); navFlingBtn.Name = "NavFling"; navFlingBtn.Size = UDim2.new(0.5, 0, 1, 0); navFlingBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180); navFlingBtn.Font = Enum.Font.SourceSansBold; navFlingBtn.Text = "Fling"; navFlingBtn.TextSize = 14
+    gui.contentHolder = Instance.new("Frame", gui.mainFrame); gui.contentHolder.Name = "ContentHolder"; gui.contentHolder.Size = UDim2.new(1, 0, 1, -30); gui.contentHolder.Position = UDim2.new(0, 0, 0, 30); gui.contentHolder.BackgroundTransparency = 1
+    gui.navBar = Instance.new("Frame", gui.contentHolder); gui.navBar.Name = "NavBar"; gui.navBar.Size = UDim2.new(1, -20, 0, 30); gui.navBar.Position = UDim2.new(0, 10, 0, 10); gui.navBar.BackgroundColor3 = Color3.fromRGB(40, 42, 47)
+    gui.navLayout = Instance.new("UIListLayout", gui.navBar); gui.navLayout.FillDirection = Enum.FillDirection.Horizontal
+    gui.navTeleportBtn = Instance.new("TextButton", gui.navBar); gui.navTeleportBtn.Name = "NavTeleport"; gui.navTeleportBtn.Size = UDim2.new(0.5, 0, 1, 0); gui.navTeleportBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); gui.navTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255); gui.navTeleportBtn.Font = Enum.Font.SourceSansBold; gui.navTeleportBtn.Text = "Teleport"; gui.navTeleportBtn.TextSize = 14
+    gui.navFlingBtn = Instance.new("TextButton", gui.navBar); gui.navFlingBtn.Name = "NavFling"; gui.navFlingBtn.Size = UDim2.new(0.5, 0, 1, 0); gui.navFlingBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); gui.navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180); gui.navFlingBtn.Font = Enum.Font.SourceSansBold; gui.navFlingBtn.Text = "Fling"; gui.navFlingBtn.TextSize = 14
+    print("Debug: NavBar dibuat.")
 
--- Wadah untuk halaman
-local pageContainer = Instance.new("Frame", contentHolder); pageContainer.Name = "PageContainer"; pageContainer.Size = UDim2.new(1, 0, 1, -50); pageContainer.Position = UDim2.new(0, 0, 0, 50); pageContainer.BackgroundTransparency = 1
-local teleportPage = Instance.new("Frame", pageContainer); teleportPage.Name = "TeleportPage"; teleportPage.Size = UDim2.new(1, 0, 1, 0); teleportPage.BackgroundTransparency = 1; teleportPage.Visible = true
-local flingPage = Instance.new("Frame", pageContainer); flingPage.Name = "FlingPage"; flingPage.Size = UDim2.new(1, 0, 1, 0); flingPage.BackgroundTransparency = 1; flingPage.Visible = false
+    gui.pageContainer = Instance.new("Frame", gui.contentHolder); gui.pageContainer.Name = "PageContainer"; gui.pageContainer.Size = UDim2.new(1, 0, 1, -50); gui.pageContainer.Position = UDim2.new(0, 0, 0, 50); gui.pageContainer.BackgroundTransparency = 1
+    gui.teleportPage = Instance.new("Frame", gui.pageContainer); gui.teleportPage.Name = "TeleportPage"; gui.teleportPage.Size = UDim2.new(1, 0, 1, 0); gui.teleportPage.BackgroundTransparency = 1; gui.teleportPage.Visible = true
+    gui.flingPage = Instance.new("Frame", gui.pageContainer); gui.flingPage.Name = "FlingPage"; gui.flingPage.Size = UDim2.new(1, 0, 1, 0); gui.flingPage.BackgroundTransparency = 1; gui.flingPage.Visible = false
+    
+    gui.nameTextBox = Instance.new("TextBox", gui.teleportPage); gui.nameTextBox.Size = UDim2.new(1, -20, 0, 35); gui.nameTextBox.Position = UDim2.new(0, 10, 0, 0); gui.nameTextBox.BackgroundColor3 = Color3.fromRGB(40, 42, 47); gui.nameTextBox.PlaceholderText = "Pilih dari daftar atau ketik..."; gui.nameTextBox.TextColor3 = Color3.fromRGB(220, 220, 220); gui.nameTextBox.Font = Enum.Font.SourceSans; gui.nameTextBox.TextSize = 14
+    gui.teleportButton = Instance.new("TextButton", gui.teleportPage); gui.teleportButton.Size = UDim2.new(1, -20, 0, 35); gui.teleportButton.Position = UDim2.new(0, 10, 0, 45); gui.teleportButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242); gui.teleportButton.Font = Enum.Font.SourceSansBold; gui.teleportButton.Text = "TELEPORT"; gui.teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255); gui.teleportButton.TextSize = 16
+    gui.playerListFrame = Instance.new("ScrollingFrame", gui.teleportPage); gui.playerListFrame.Size = UDim2.new(1, -20, 1, -90); gui.playerListFrame.Position = UDim2.new(0, 10, 0, 90); gui.playerListFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 47); gui.playerListFrame.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242); gui.playerListFrame.ScrollBarThickness = 5
+    gui.uiGridLayout = Instance.new("UIGridLayout", gui.playerListFrame); gui.uiGridLayout.CellPadding = UDim2.new(0, 5, 0, 5); gui.uiGridLayout.CellSize = UDim2.new(0, 125, 0, 25)
+    print("Debug: Halaman Teleport dibuat.")
 
--- === KONTEN HALAMAN TELEPORT ===
-local nameTextBox = Instance.new("TextBox", teleportPage); nameTextBox.Size = UDim2.new(1, -20, 0, 35); nameTextBox.Position = UDim2.new(0, 10, 0, 0); nameTextBox.BackgroundColor3 = Color3.fromRGB(40, 42, 47); nameTextBox.PlaceholderText = "Pilih dari daftar atau ketik..."; nameTextBox.TextColor3 = Color3.fromRGB(220, 220, 220); nameTextBox.Font = Enum.Font.SourceSans; nameTextBox.TextSize = 14
-local teleportButton = Instance.new("TextButton", teleportPage); teleportButton.Size = UDim2.new(1, -20, 0, 35); teleportButton.Position = UDim2.new(0, 10, 0, 45); teleportButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242); teleportButton.Font = Enum.Font.SourceSansBold; teleportButton.Text = "TELEPORT"; teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255); teleportButton.TextSize = 16
-local playerListFrame = Instance.new("ScrollingFrame", teleportPage); playerListFrame.Size = UDim2.new(1, -20, 1, -90); playerListFrame.Position = UDim2.new(0, 10, 0, 90); playerListFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 47); playerListFrame.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242); playerListFrame.ScrollBarThickness = 5
-local uiGridLayout = Instance.new("UIGridLayout", playerListFrame); uiGridLayout.CellPadding = UDim2.new(0, 5, 0, 5); uiGridLayout.CellSize = UDim2.new(0, 125, 0, 25)
+    gui.clickFlingToggleButton = Instance.new("TextButton", gui.flingPage); gui.clickFlingToggleButton.Name = "ClickFlingToggle"; gui.clickFlingToggleButton.Size = UDim2.new(1, -20, 0, 45); gui.clickFlingToggleButton.Position = UDim2.new(0, 10, 0, 10); gui.clickFlingToggleButton.Font = Enum.Font.SourceSansBold; gui.clickFlingToggleButton.TextSize = 18; gui.clickFlingToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255); gui.clickFlingToggleButton.Text = "AKTIFKAN MODE FLING"; gui.clickFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
+    print("Debug: Halaman Fling dibuat.")
 
--- === KONTEN HALAMAN FLING ===
-local clickFlingToggleButton = Instance.new("TextButton", flingPage); clickFlingToggleButton.Name = "ClickFlingToggle"; clickFlingToggleButton.Size = UDim2.new(1, -20, 0, 45); clickFlingToggleButton.Position = UDim2.new(0, 10, 0, 10); clickFlingToggleButton.Font = Enum.Font.SourceSansBold; clickFlingToggleButton.TextSize = 18; clickFlingToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255); clickFlingToggleButton.Text = "AKTIFKAN MODE FLING"; clickFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
+    return gui
+end)
 
--- === LOGIKA DAN FUNGSI ===
+-- Periksa apakah UI berhasil dibuat
+if not success then
+    warn("FATAL: Pembuatan UI gagal. Game ini mungkin memiliki sistem keamanan yang sangat ketat. Error: " .. tostring(uiElements))
+    return
+end
+
+-- Jika berhasil, ambil semua elemen UI dari tabel
+local ui = uiElements
+
+-- === LOGIKA DAN FUNGSI (DI LUAR PCALL) ===
 
 local function executeFling(targetPart)
     local targetModel = targetPart:FindFirstAncestorWhichIsA("Model")
     if not targetModel then return end
-    
     local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
     if not (targetPlayer and targetPlayer ~= localPlayer) then return end
-    
     local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
     if not targetRoot then return end
     
     print("Mencoba Fling pada " .. targetPlayer.Name .. " dengan metode Glitched Physics...")
-
-    -- Buat "dinding" tak terlihat
     local glitchPart = Instance.new("Part")
     glitchPart.Name = "FlingWall"
     glitchPart.Size = Vector3.new(6, 6, 6)
     glitchPart.Anchored = true
     glitchPart.CanCollide = true
     glitchPart.Transparency = 1
-    glitchPart.CFrame = targetRoot.CFrame -- Teleport ke dalam target
+    glitchPart.CFrame = targetRoot.CFrame
     glitchPart.Parent = workspace
-    
-    -- Hancurkan dinding setelah sepersekian detik
     Debris:AddItem(glitchPart, 0.1)
 end
 
 local function onInputBegan(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local target = localPlayer:GetMouse().Target
-        if target then
-            executeFling(target)
-        end
+        local mouse = localPlayer:GetMouse()
+        if not mouse then return end
+        local target = mouse.Target
+        if target then executeFling(target) end
     end
 end
 
@@ -114,35 +123,33 @@ local function activateClickFling()
     print("Mode Click-to-Fling ACTIVATED")
 end
 
-clickFlingToggleButton.MouseButton1Click:Connect(function()
+ui.clickFlingToggleButton.MouseButton1Click:Connect(function()
     clickFlingActive = not clickFlingActive
     if clickFlingActive then
         activateClickFling()
-        clickFlingToggleButton.Text = "MODE FLING AKTIF"
-        clickFlingToggleButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129) -- Hijau
+        ui.clickFlingToggleButton.Text = "MODE FLING AKTIF"
+        ui.clickFlingToggleButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129)
     else
         deactivateClickFling()
-        clickFlingToggleButton.Text = "AKTIFKAN MODE FLING"
-        clickFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69) -- Merah
+        ui.clickFlingToggleButton.Text = "AKTIFKAN MODE FLING"
+        ui.clickFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
     end
 end)
 
--- Logika Navbar
 local function switchPage(pageName)
     if pageName == "Teleport" then
-        teleportPage.Visible = true; flingPage.Visible = false
-        navTeleportBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); navTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        navFlingBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        ui.teleportPage.Visible = true; ui.flingPage.Visible = false
+        ui.navTeleportBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); ui.navTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ui.navFlingBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); ui.navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
     elseif pageName == "Fling" then
-        teleportPage.Visible = false; flingPage.Visible = true
-        navFlingBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); navFlingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        navTeleportBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        ui.teleportPage.Visible = false; ui.flingPage.Visible = true
+        ui.navFlingBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); ui.navFlingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ui.navTeleportBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); ui.navTeleportBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
     end
 end
-navTeleportBtn.MouseButton1Click:Connect(function() switchPage("Teleport") end)
-navFlingBtn.MouseButton1Click:Connect(function() switchPage("Fling") end)
+ui.navTeleportBtn.MouseButton1Click:Connect(function() switchPage("Teleport") end)
+ui.navFlingBtn.MouseButton1Click:Connect(function() switchPage("Fling") end)
 
--- Fungsi Teleport
 local function teleportToPlayer(targetPlayerName)
     local targetPlayer = Players:FindFirstChild(targetPlayerName)
     if not (targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")) then print("Target atau karakter lokal tidak valid.") return end
@@ -151,21 +158,50 @@ local function teleportToPlayer(targetPlayerName)
     localPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
 end
 
--- Fungsi Update Daftar Pemain
 function updatePlayerList()
-    for _, c in ipairs(playerListFrame:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    for _, c in ipairs(ui.playerListFrame:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= localPlayer then
-            local btn = Instance.new("TextButton", playerListFrame); btn.Name = p.Name; btn.Text = p.Name; btn.Size = UDim2.new(0, 125, 0, 25); btn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); btn.TextColor3 = Color3.fromRGB(220, 220, 220); btn.Font = Enum.Font.SourceSans; btn.TextSize = 12
-            btn.MouseButton1Click:Connect(function() nameTextBox.Text = p.Name end)
+            local btn = Instance.new("TextButton", ui.playerListFrame); btn.Name = p.Name; btn.Text = p.Name; btn.Size = UDim2.new(0, 125, 0, 25); btn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); btn.TextColor3 = Color3.fromRGB(220, 220, 220); btn.Font = Enum.Font.SourceSans; btn.TextSize = 12
+            btn.MouseButton1Click:Connect(function() ui.nameTextBox.Text = p.Name end)
         end
     end
-    playerListFrame.CanvasSize = UDim2.new(0, 0, 0, uiGridLayout.AbsoluteContentSize.Y)
+    ui.playerListFrame.CanvasSize = UDim2.new(0, 0, 0, ui.uiGridLayout.AbsoluteContentSize.Y)
 end
 
--- Inisialisasi & Event Listeners
-teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) end end)
-closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v18 = false end)
+ui.teleportButton.MouseButton1Click:Connect(function() if ui.nameTextBox.Text ~= "" then teleportToPlayer(ui.nameTextBox.Text) end end)
+ui.closeButton.MouseButton1Click:Connect(function() ui.screenGui:Destroy(); _G.UniversalMultiToolLoaded_v18 = false end)
 local isMinimized = false; local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-minimizeButton.MouseButton1Click:Connect(function() isMinimized = not isMinimized; local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize; if isMinimized then minimizeButton.Text = "❐" else minimizeButton.Text = "_" end; contentHolder.Visible = not isMinimized; TweenService:Create(mainFrame, tweenInfo, {Size = targetSize}):Play() end)
-local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType
+local originalSize = ui.mainFrame.Size
+ui.minimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize
+    if isMinimized then ui.minimizeButton.Text = "❐" else ui.minimizeButton.Text = "_" end
+    ui.contentHolder.Visible = not isMinimized
+    TweenService:Create(ui.mainFrame, tweenInfo, {Size = targetSize}):Play()
+end)
+local dragging, dragStart, startPos; ui.titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging, dragStart, startPos = true, input.Position, ui.mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end); ui.titleBar.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then local delta = input.Position - dragStart; ui.mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+
+local function initialize()
+    task.wait() -- Penundaan singkat sebelum parenting
+    ui.screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+    print("Debug: UI berhasil dipasangkan ke PlayerGui.")
+    print("GUI Multi-Tool v18.0 berhasil dimuat.")
+    updatePlayerList()
+    if _G.playerAddedConnection then _G.playerAddedConnection:Disconnect() end
+    if _G.playerRemovingConnection then _G.playerRemovingConnection:Disconnect() end
+    _G.playerAddedConnection = Players.PlayerAdded:Connect(updatePlayerList)
+    _G.playerRemovingConnection = Players.PlayerRemoving:Connect(updatePlayerList)
+end
+
+initialize()
+
+localPlayer.CharacterAdded:Connect(function(character)
+    print("Karakter baru terdeteksi. Mode Fling telah direset.")
+    if clickFlingActive then
+        clickFlingActive = false
+        deactivateClickFling()
+        ui.clickFlingToggleButton.Text = "AKTIFKAN MODE FLING"
+        ui.clickFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
+    end
+end)
