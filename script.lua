@@ -1,21 +1,21 @@
 --[[
-    Skrip Universal v19.0 - Edisi "Resilience"
+    Skrip Universal v20.0 - Edisi "Velocity"
     
     Pembaruan Kritis:
+    - [DIPERBAIKI] Fungsi Fling sekarang menggunakan metode 'AssemblyLinearVelocity' yang jauh lebih andal daripada metode fisika glitch.
+    - Menambahkan kekuatan lemparan ke atas (upward force) untuk hasil yang lebih baik.
     - Menggunakan pcall untuk mencegah crash total jika UI gagal dibuat.
     - Menggunakan teknik "Parenting Tertunda" untuk mencoba melewati deteksi keamanan.
-    - Menambahkan pesan debug yang lebih detail untuk melacak titik kegagalan.
-    - Fling tetap menggunakan metode "Glitched Physics" yang paling andal.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if _G.UniversalMultiToolLoaded_v19 then
-    print("Skrip Multi-Tool v19 sudah berjalan.")
+if _G.UniversalMultiToolLoaded_v20 then
+    print("Skrip Multi-Tool v20 sudah berjalan.")
     return
 end
-_G.UniversalMultiToolLoaded_v19 = true
+_G.UniversalMultiToolLoaded_v20 = true
 
-print("Memulai Skrip Multi-Tool Universal v19.0...")
+print("Memulai Skrip Multi-Tool Universal v20.0...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -36,7 +36,7 @@ local success, uiElements = pcall(function()
 
     local gui = {}
     
-    gui.screenGui = Instance.new("ScreenGui"); gui.screenGui.Name = "UniversalMultiToolGUI_v19"; gui.screenGui.ResetOnSpawn = false; gui.screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    gui.screenGui = Instance.new("ScreenGui"); gui.screenGui.Name = "UniversalMultiToolGUI_v20"; gui.screenGui.ResetOnSpawn = false; gui.screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     print("Debug: ScreenGui dibuat.")
 
     gui.mainFrame = Instance.new("Frame", gui.screenGui); gui.mainFrame.Name = "MainFrame"; gui.mainFrame.Size = UDim2.new(0, 300, 0, 320); gui.mainFrame.Position = UDim2.new(0.5, -150, 0.5, -160); gui.mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37); gui.mainFrame.BorderColor3 = Color3.fromRGB(48, 51, 57); gui.mainFrame.BorderSizePixel = 1; gui.mainFrame.ClipsDescendants = true
@@ -82,24 +82,37 @@ local ui = uiElements
 
 -- === LOGIKA DAN FUNGSI (DI LUAR PCALL) ===
 
+-- [FUNGSI FLING YANG DIPERBAIKI]
 local function executeFling(targetPart)
+    -- Dapatkan model dan pemain dari bagian yang diklik
     local targetModel = targetPart:FindFirstAncestorWhichIsA("Model")
     if not targetModel then return end
     local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
-    if not (targetPlayer and targetPlayer ~= localPlayer) then return end
-    local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
-    if not targetRoot then return end
     
-    print("Mencoba Fling pada " .. targetPlayer.Name .. " dengan metode Glitched Physics...")
-    local glitchPart = Instance.new("Part")
-    glitchPart.Name = "FlingWall"
-    glitchPart.Size = Vector3.new(6, 6, 6)
-    glitchPart.Anchored = true
-    glitchPart.CanCollide = true
-    glitchPart.Transparency = 1
-    glitchPart.CFrame = targetRoot.CFrame
-    glitchPart.Parent = workspace
-    Debris:AddItem(glitchPart, 0.1)
+    -- Pastikan target adalah pemain yang valid dan bukan pemain lokal
+    if not (targetPlayer and targetPlayer ~= localPlayer) then return end
+    
+    -- Dapatkan HumanoidRootPart dari target dan pemain lokal
+    local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
+    local localRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not (targetRoot and localRoot) then
+        print("Error: Tidak dapat menemukan HumanoidRootPart untuk target atau pemain lokal.")
+        return
+    end
+    
+    print("Mencoba Fling pada " .. targetPlayer.Name .. " dengan metode Velocity...")
+
+    -- Tentukan kekuatan dan arah lemparan (bisa diubah sesuai selera)
+    local FLING_POWER = 200    -- Kekuatan lemparan ke depan/belakang
+    local UPWARD_FORCE = 100   -- Kekuatan lemparan ke atas
+
+    -- Hitung arah dari pemain kita ke target
+    local direction = (targetRoot.Position - localRoot.Position).Unit
+    
+    -- Terapkan kecepatan ke HumanoidRootPart target.
+    -- Ini akan secara langsung melempar pemain ke arah yang dihitung.
+    targetRoot.AssemblyLinearVelocity = (direction * FLING_POWER) + Vector3.new(0, UPWARD_FORCE, 0)
 end
 
 local function onInputBegan(input, gameProcessed)
@@ -170,7 +183,7 @@ function updatePlayerList()
 end
 
 ui.teleportButton.MouseButton1Click:Connect(function() if ui.nameTextBox.Text ~= "" then teleportToPlayer(ui.nameTextBox.Text) end end)
-ui.closeButton.MouseButton1Click:Connect(function() ui.screenGui:Destroy(); _G.UniversalMultiToolLoaded_v18 = false end)
+ui.closeButton.MouseButton1Click:Connect(function() ui.screenGui:Destroy(); _G.UniversalMultiToolLoaded_v20 = false end)
 local isMinimized = false; local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local originalSize = ui.mainFrame.Size
 ui.minimizeButton.MouseButton1Click:Connect(function()
@@ -186,7 +199,7 @@ local function initialize()
     task.wait() -- Penundaan singkat sebelum parenting
     ui.screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
     print("Debug: UI berhasil dipasangkan ke PlayerGui.")
-    print("GUI Multi-Tool v18.0 berhasil dimuat.")
+    print("GUI Multi-Tool v20.0 berhasil dimuat.")
     updatePlayerList()
     if _G.playerAddedConnection then _G.playerAddedConnection:Disconnect() end
     if _G.playerRemovingConnection then _G.playerRemovingConnection:Disconnect() end
