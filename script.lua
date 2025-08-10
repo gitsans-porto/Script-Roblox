@@ -1,20 +1,21 @@
 --[[
-    Skrip Universal v12.0 - Teleport & Walk-Fling (Perbaikan Kritis)
+    Skrip Universal v13.0 - Teleport & Blender-Fling
     
-    Perbaikan Bug:
-    - Fling: Menambahkan pemeriksaan untuk mencegah pemain melempar dirinya sendiri.
-    - Minimize: Menyambungkan kembali event klik pada tombol minimize agar berfungsi.
-    - Struktur UI yang lebih bersih.
+    Pembaruan Fitur:
+    - Rombak total fitur Fling menjadi metode "Blender".
+    - Membuat part pemutar terpisah yang dilas ke pemain untuk menghindari fling diri sendiri.
+    - UI Fling tetap menggunakan tombol ON/OFF yang simpel dan efektif.
+    - Stabilitas penuh dan reaktivasi otomatis setelah respawn.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if _G.UniversalMultiToolLoaded_v12 then
-    print("Skrip Multi-Tool v12 sudah berjalan.")
+if _G.UniversalMultiToolLoaded_v13 then
+    print("Skrip Multi-Tool v13 sudah berjalan.")
     return
 end
-_G.UniversalMultiToolLoaded_v12 = true
+_G.UniversalMultiToolLoaded_v13 = true
 
-print("Memulai Skrip Multi-Tool Universal v12.0...")
+print("Memulai Skrip Multi-Tool Universal v13.0...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -25,13 +26,14 @@ local TweenService = game:GetService("TweenService")
 local localPlayer = Players.LocalPlayer
 
 -- Variabel Status
-local walkFlingActive = false
-local touchConnections = {}
+local blenderFlingActive = false
+local blenderPart = nil
+local blenderConnection = nil
 local flingDebounce = {}
 
 -- Membuat ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UniversalMultiToolGUI_v12"
+screenGui.Name = "UniversalMultiToolGUI_v13"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
@@ -64,8 +66,6 @@ local navFlingBtn = Instance.new("TextButton", navBar); navFlingBtn.Name = "NavF
 
 -- Wadah untuk halaman
 local pageContainer = Instance.new("Frame", contentHolder); pageContainer.Name = "PageContainer"; pageContainer.Size = UDim2.new(1, 0, 1, -50); pageContainer.Position = UDim2.new(0, 0, 0, 50); pageContainer.BackgroundTransparency = 1
-
--- Area Halaman Fitur
 local teleportPage = Instance.new("Frame", pageContainer); teleportPage.Name = "TeleportPage"; teleportPage.Size = UDim2.new(1, 0, 1, 0); teleportPage.BackgroundTransparency = 1; teleportPage.Visible = true
 local flingPage = Instance.new("Frame", pageContainer); flingPage.Name = "FlingPage"; flingPage.Size = UDim2.new(1, 0, 1, 0); flingPage.BackgroundTransparency = 1; flingPage.Visible = false
 
@@ -76,14 +76,13 @@ local playerListFrame = Instance.new("ScrollingFrame", teleportPage); playerList
 local uiGridLayout = Instance.new("UIGridLayout", playerListFrame); uiGridLayout.CellPadding = UDim2.new(0, 5, 0, 5); uiGridLayout.CellSize = UDim2.new(0, 125, 0, 25)
 
 -- === KONTEN HALAMAN FLING ===
-local walkFlingToggleButton = Instance.new("TextButton", flingPage); walkFlingToggleButton.Name = "WalkFlingToggle"; walkFlingToggleButton.Size = UDim2.new(1, -20, 0, 45); walkFlingToggleButton.Position = UDim2.new(0, 10, 0, 10); walkFlingToggleButton.Font = Enum.Font.SourceSansBold; walkFlingToggleButton.TextSize = 20; walkFlingToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255); walkFlingToggleButton.Text = "OFF"; walkFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
+local blenderFlingToggleButton = Instance.new("TextButton", flingPage); blenderFlingToggleButton.Name = "BlenderFlingToggle"; blenderFlingToggleButton.Size = UDim2.new(1, -20, 0, 45); blenderFlingToggleButton.Position = UDim2.new(0, 10, 0, 10); blenderFlingToggleButton.Font = Enum.Font.SourceSansBold; blenderFlingToggleButton.TextSize = 20; blenderFlingToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255); blenderFlingToggleButton.Text = "OFF"; blenderFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
 
 -- === LOGIKA DAN FUNGSI ===
 
-local function onTouch(hit)
-    if not walkFlingActive then return end
+local function onBlenderTouch(hit)
+    if not blenderFlingActive then return end
     local myCharacter = localPlayer.Character
-    -- PERBAIKAN KRUSIAL #1: Jangan fling diri sendiri
     if not myCharacter or hit:IsDescendantOf(myCharacter) then return end
     
     local targetModel = hit:FindFirstAncestorWhichIsA("Model")
@@ -95,43 +94,58 @@ local function onTouch(hit)
     if flingDebounce[targetPlayer] then return end
     flingDebounce[targetPlayer] = true
     
-    print("WalkFling triggered on: " .. targetPlayer.Name)
-    local bodyVelocity = Instance.new("BodyVelocity", targetRoot)
-    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    bodyVelocity.Velocity = Vector3.new(math.random(-250, 250), 1200, math.random(-250, 250))
-    bodyVelocity.P = 50000
-    Debris:AddItem(bodyVelocity, 0.5)
+    print("Blender Fling triggered on: " .. targetPlayer.Name)
+    targetRoot.Velocity = Vector3.new(math.random(-500, 500), 1500, math.random(-500, 500))
+    
     task.delay(1, function() flingDebounce[targetPlayer] = nil end)
 end
 
-local function deactivateWalkFling()
-    for _, connection in ipairs(touchConnections) do connection:Disconnect() end
-    touchConnections = {}
-    print("WalkFling DEACTIVATED")
+local function deactivateBlenderFling()
+    if blenderPart and blenderPart.Parent then blenderPart:Destroy() end
+    if blenderConnection then blenderConnection:Disconnect(); blenderConnection = nil end
+    blenderPart = nil
+    print("Blender Fling DEACTIVATED")
 end
 
-local function activateWalkFling()
+local function activateBlenderFling()
     local myCharacter = localPlayer.Character
-    if not myCharacter then print("Tidak bisa mengaktifkan: karakter tidak ditemukan.") return end
-    deactivateWalkFling()
-    for _, part in ipairs(myCharacter:GetDescendants()) do
-        if part:IsA("BasePart") then
-            table.insert(touchConnections, part.Touched:Connect(onTouch))
-        end
-    end
-    print("WalkFling ACTIVATED")
+    local myRoot = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")
+    if not myRoot then print("Tidak bisa mengaktifkan: karakter tidak ditemukan.") return end
+    
+    deactivateBlenderFling() 
+    
+    blenderPart = Instance.new("Part")
+    blenderPart.Name = "BlenderCore"
+    blenderPart.Size = Vector3.new(6, 6, 6)
+    blenderPart.CanCollide = false
+    blenderPart.Anchored = false
+    blenderPart.Massless = true
+    blenderPart.Transparency = 1
+    blenderPart.Parent = myCharacter
+
+    local weld = Instance.new("WeldConstraint", blenderPart)
+    weld.Part0 = blenderPart
+    weld.Part1 = myRoot
+
+    local angularVelocity = Instance.new("BodyAngularVelocity", blenderPart)
+    angularVelocity.AngularVelocity = Vector3.new(0, 100, 0)
+    angularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    angularVelocity.P = 50000
+    
+    blenderConnection = blenderPart.Touched:Connect(onBlenderTouch)
+    print("Blender Fling ACTIVATED")
 end
 
-walkFlingToggleButton.MouseButton1Click:Connect(function()
-    walkFlingActive = not walkFlingActive
-    if walkFlingActive then
-        activateWalkFling()
-        walkFlingToggleButton.Text = "ON"
-        walkFlingToggleButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129) -- Hijau
+blenderFlingToggleButton.MouseButton1Click:Connect(function()
+    blenderFlingActive = not blenderFlingActive
+    if blenderFlingActive then
+        activateBlenderFling()
+        blenderFlingToggleButton.Text = "ON"
+        blenderFlingToggleButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129) -- Hijau
     else
-        deactivateWalkFling()
-        walkFlingToggleButton.Text = "OFF"
-        walkFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69) -- Merah
+        deactivateBlenderFling()
+        blenderFlingToggleButton.Text = "OFF"
+        blenderFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69) -- Merah
     end
 end)
 
@@ -173,31 +187,14 @@ end
 
 -- Inisialisasi & Event Listeners
 teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) end end)
-closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v12 = false end)
-
--- PERBAIKAN KRUSIAL #2: Logika Minimize
-local isMinimized = false
-local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-minimizeButton.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize
-    
-    if isMinimized then
-        minimizeButton.Text = "❐"
-    else
-        minimizeButton.Text = "_"
-    end
-    
-    contentHolder.Visible = not isMinimized
-    local sizeTween = TweenService:Create(mainFrame, tweenInfo, {Size = targetSize})
-    sizeTween:Play()
-end)
-
+closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v13 = false end)
+local isMinimized = false; local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+minimizeButton.MouseButton1Click:Connect(function() isMinimized = not isMinimized; local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize; if isMinimized then minimizeButton.Text = "❐" else minimizeButton.Text = "_" end; contentHolder.Visible = not isMinimized; TweenService:Create(mainFrame, tweenInfo, {Size = targetSize}):Play() end)
 local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging, dragStart, startPos = true, input.Position, mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end); titleBar.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 
 local function initialize()
     screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-    print("GUI Multi-Tool v12.0 berhasil dimuat.")
+    print("GUI Multi-Tool v13.0 berhasil dimuat.")
     updatePlayerList()
     if _G.playerAddedConnection then _G.playerAddedConnection:Disconnect() end
     if _G.playerRemovingConnection then _G.playerRemovingConnection:Disconnect() end
@@ -208,9 +205,9 @@ end
 initialize()
 
 localPlayer.CharacterAdded:Connect(function(character)
-    print("Karakter baru terdeteksi. Memeriksa status WalkFling...")
-    if walkFlingActive then
+    print("Karakter baru terdeteksi. Memeriksa status Blender Fling...")
+    if blenderFlingActive then
         task.wait(1) 
-        activateWalkFling()
+        activateBlenderFling()
     end
 end)
