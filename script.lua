@@ -1,30 +1,35 @@
 --[[
-    Skrip Universal v6.0 - Teleport & Fling
+    Skrip Universal v7.0 - Teleport & Fling
     
-    Pembaruan Fitur:
-    - Mengganti total mekanisme Fling dengan metode proyektil tak terlihat.
-    - Metode ini lebih andal dan kuat untuk memastikan target terpental.
+    Pembaruan Fitur (Final):
+    - Mekanisme Fling baru: Teleportasi tak terlihat ke target untuk memberikan dorongan fisika langsung.
+    - Tombol "STOP FLING" untuk kembali ke posisi semula dan mengembalikan wujud.
+    - Metode paling andal untuk memastikan keberhasilan.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalMultiToolGUI_v6") then
-    print("Skrip Multi-Tool v6 sudah berjalan.")
+if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalMultiToolGUI_v7") then
+    print("Skrip Multi-Tool v7 sudah berjalan.")
     return
 end
 
-print("Memulai Skrip Multi-Tool Universal v6.0...")
+print("Memulai Skrip Multi-Tool Universal v7.0...")
 
 -- Services
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
 
 -- Pemain Lokal
 local localPlayer = Players.LocalPlayer
 
+-- Variabel Status
+local isFlinging = false
+local originalPosition
+local originalCharacterTransparency = {}
+
 -- Membuat ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UniversalMultiToolGUI_v6"
+screenGui.Name = "UniversalMultiToolGUI_v7"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
@@ -71,6 +76,7 @@ local uiGridLayout = Instance.new("UIGridLayout", playerListFrame); uiGridLayout
 
 -- Logika Navbar
 local function switchPage(pageName)
+    if isFlinging then print("Selesaikan Fling terlebih dahulu!") return end
     if pageName == "Teleport" then
         teleportPage.Visible = true; flingPage.Visible = false
         navTeleportBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); navTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -84,59 +90,68 @@ end
 navTeleportBtn.MouseButton1Click:Connect(function() switchPage("Teleport") end)
 navFlingBtn.MouseButton1Click:Connect(function() switchPage("Fling") end)
 
--- === FUNGSI FLING BARU (METODE PROYEKTIL) ===
-local function flingPlayer(targetPlayerName)
-    local targetPlayer = Players:FindFirstChild(targetPlayerName)
+-- Fungsi untuk membuat karakter tak terlihat/terlihat
+local function setCharacterVisible(character, visible)
+    if visible then
+        -- Kembalikan transparansi asli
+        for part, transparency in pairs(originalCharacterTransparency) do
+            if part and part.Parent then
+                part.Transparency = transparency
+            end
+        end
+        originalCharacterTransparency = {} -- Kosongkan tabel
+    else
+        -- Simpan dan buat tak terlihat
+        originalCharacterTransparency = {}
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                originalCharacterTransparency[part] = part.Transparency
+                part.Transparency = 1
+            end
+        end
+    end
+end
+
+-- === FUNGSI FLING UTAMA (METODE TELEPORT-FLING) ===
+local function handleFling(targetPlayerName)
     local myCharacter = localPlayer.Character
-    
-    if not (targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")) then
-        print("Target atau karakter lokal tidak valid.")
+    if not myCharacter or not myCharacter:FindFirstChild("HumanoidRootPart") then
+        print("Karakter lokal tidak valid.")
         return
     end
     
-    print("Mempersiapkan proyektil untuk " .. targetPlayer.Name .. "...")
-    
-    local startPos = myCharacter.HumanoidRootPart.Position
-    local targetPos = targetPlayer.Character.HumanoidRootPart.Position
-    
-    local projectile = Instance.new("Part")
-    projectile.Size = Vector3.new(1, 1, 1)
-    projectile.Position = startPos
-    projectile.Transparency = 1
-    projectile.CanCollide = false
-    projectile.Anchored = false
-    projectile.Massless = true
-    projectile.Parent = workspace
-    
-    -- Arahkan proyektil ke target
-    local direction = (targetPos - startPos).Unit
-    projectile.CFrame = CFrame.new(startPos, targetPos)
-    
-    -- Tembakkan dengan kecepatan sangat tinggi
-    projectile.Velocity = direction * 3000 -- Kecepatan bisa disesuaikan
-    
-    local connection
-    connection = projectile.Touched:Connect(function(hit)
-        -- Periksa apakah yang ditabrak adalah bagian dari karakter target
-        if hit and hit.Parent and hit.Parent:FindFirstChild("Humanoid") and hit.Parent.Name == targetPlayer.Name then
-            print("Proyektil mengenai " .. targetPlayer.Name .. "!")
-            
-            local targetRoot = hit.Parent:FindFirstChild("HumanoidRootPart")
-            if targetRoot then
-                -- Berikan gaya dorong yang sangat kuat
-                targetRoot.Velocity = Vector3.new(math.random(-500, 500), 1000, math.random(-500, 500))
-            end
-            
-            -- Hancurkan proyektil dan putuskan koneksi setelah mengenai target
-            projectile:Destroy()
-            if connection then
-                connection:Disconnect()
-            end
+    if isFlinging then
+        -- === LOGIKA UNTUK STOP FLING ===
+        print("Menghentikan Fling dan kembali ke posisi semula...")
+        myCharacter.HumanoidRootPart.CFrame = originalPosition
+        setCharacterVisible(myCharacter, true)
+        
+        isFlinging = false
+        flingButton.Text = "FLING"
+        flingButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
+    else
+        -- === LOGIKA UNTUK MEMULAI FLING ===
+        local targetPlayer = Players:FindFirstChild(targetPlayerName)
+        if not (targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")) then
+            print("Target tidak valid untuk di-fling.")
+            return
         end
-    end)
-    
-    -- Hancurkan proyektil setelah beberapa detik jika tidak mengenai apa pun
-    Debris:AddItem(projectile, 5)
+        
+        print("Memulai Fling pada " .. targetPlayer.Name .. "...")
+        
+        -- Simpan status & buat tak terlihat
+        originalPosition = myCharacter.HumanoidRootPart.CFrame
+        setCharacterVisible(myCharacter, false)
+        
+        -- Teleport & Fling
+        local targetRoot = targetPlayer.Character.HumanoidRootPart
+        myCharacter.HumanoidRootPart.CFrame = targetRoot.CFrame + Vector3.new(0, 5, 0)
+        targetRoot.Velocity = Vector3.new(0, 2000, 0) -- Dorongan vertikal masif
+        
+        isFlinging = true
+        flingButton.Text = "STOP FLING"
+        flingButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129) -- Warna hijau
+    end
 end
 
 -- Fungsi Teleport (tidak berubah)
@@ -162,7 +177,7 @@ end
 
 -- Event Listeners
 teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) end end)
-flingButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then flingPlayer(nameTextBox.Text) end end)
+flingButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" or isFlinging then handleFling(nameTextBox.Text) end end)
 closeButton.MouseButton1Click:Connect(function() screenGui:Destroy() end)
 local isMinimized = false; local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 minimizeButton.MouseButton1Click:Connect(function() isMinimized = not isMinimized; local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize; if isMinimized then minimizeButton.Text = "❐" else minimizeButton.Text = "_" end; contentHolder.Visible = not isMinimized; TweenService:Create(mainFrame, tweenInfo, {Size = targetSize}):Play() end)
@@ -170,7 +185,7 @@ local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input)
 
 -- Inisialisasi
 screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-print("GUI Multi-Tool v6.0 berhasil dimuat.")
+print("GUI Multi-Tool v7.0 (Final) berhasil dimuat.")
 updatePlayerList()
 Players.PlayerAdded:Connect(updatePlayerList)
 Players.PlayerRemoving:Connect(updatePlayerList)
