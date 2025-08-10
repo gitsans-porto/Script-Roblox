@@ -1,21 +1,18 @@
 --[[
-    Skrip Teleportasi Universal v4.0
-    Didesain untuk fungsionalitas dan kemudahan penggunaan maksimal.
+    Skrip Teleportasi Universal v4.1
     
-    Fitur Baru:
-    - Daftar pemain server yang bisa digulir (scrollable) dan diperbarui secara real-time.
-    - Fungsi klik-untuk-pilih nama pemain.
-    - UIGridLayout untuk tata letak daftar pemain yang rapi.
-    - Desain UI yang disempurnakan.
+    Perbaikan Bug:
+    - Memperbaiki masalah di mana daftar pemain hanya menampilkan maksimal 10 pemain.
+    - Sekarang secara dinamis mengatur CanvasSize dari ScrollingFrame untuk memastikan semua pemain di server terlihat.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalTeleportGUI_v4") then
-    print("Skrip Teleportasi v4 sudah berjalan.")
+if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalTeleportGUI_v4_1") then
+    print("Skrip Teleportasi v4.1 sudah berjalan.")
     return
 end
 
-print("Memulai Skrip Teleportasi Universal v4.0...")
+print("Memulai Skrip Teleportasi Universal v4.1...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -26,14 +23,14 @@ local localPlayer = Players.LocalPlayer
 
 -- Membuat ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UniversalTeleportGUI_v4"
+screenGui.Name = "UniversalTeleportGUI_v4_1"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 -- Membuat Frame Utama
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-local originalSize = UDim2.new(0, 300, 0, 280) -- Ukuran diperbesar untuk daftar pemain
+local originalSize = UDim2.new(0, 300, 0, 280)
 mainFrame.Size = originalSize
 mainFrame.Position = UDim2.new(0.5, -150, 0.5, -140)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37)
@@ -42,14 +39,14 @@ mainFrame.BorderSizePixel = 1
 mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
--- Membuat Title Bar (tidak berubah)
-local titleBar = Instance.new("Frame")
+-- Membuat Title Bar
+local titleBar = Instance.new("Frame", mainFrame)
 titleBar.Name = "TitleBar"
 titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
 titleBar.BorderSizePixel = 0
-titleBar.Parent = mainFrame
--- (Isi dari Title Bar: TitleLabel, CloseButton, MinimizeButton tetap sama)
+
+-- (Isi dari Title Bar)
 local titleLabel = Instance.new("TextLabel", titleBar)
 titleLabel.Size = UDim2.new(1, -60, 1, 0); titleLabel.Position = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundColor3 = titleBar.BackgroundColor3; titleLabel.BorderSizePixel = 0
@@ -67,12 +64,11 @@ minimizeButton.BackgroundColor3 = titleBar.BackgroundColor3; minimizeButton.Bord
 minimizeButton.Font = Enum.Font.SourceSansBold; minimizeButton.Text = "_"; minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200); minimizeButton.TextSize = 20
 
 -- Konten di dalam Frame
-local contentHolder = Instance.new("Frame")
+local contentHolder = Instance.new("Frame", mainFrame)
 contentHolder.Name = "ContentHolder"
 contentHolder.Size = UDim2.new(1, 0, 1, -30)
 contentHolder.Position = UDim2.new(0, 0, 0, 30)
 contentHolder.BackgroundTransparency = 1
-contentHolder.Parent = mainFrame
 
 local nameTextBox = Instance.new("TextBox", contentHolder)
 nameTextBox.Size = UDim2.new(1, -20, 0, 35); nameTextBox.Position = UDim2.new(0, 10, 0, 10)
@@ -87,60 +83,50 @@ teleportButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242); teleportButton.B
 teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255); teleportButton.Font = Enum.Font.SourceSansBold
 teleportButton.Text = "TELEPORT"; teleportButton.TextSize = 16
 
--- === FITUR BARU: DAFTAR PEMAIN ===
-local playerListFrame = Instance.new("ScrollingFrame")
+-- Daftar Pemain
+local playerListFrame = Instance.new("ScrollingFrame", contentHolder)
 playerListFrame.Name = "PlayerListFrame"
-playerListFrame.Size = UDim2.new(1, -20, 1, -105) -- Mengisi sisa ruang
+playerListFrame.Size = UDim2.new(1, -20, 1, -105)
 playerListFrame.Position = UDim2.new(0, 10, 0, 100)
 playerListFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 47)
 playerListFrame.BorderSizePixel = 0
-playerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Akan diatur oleh UIGridLayout
 playerListFrame.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242)
 playerListFrame.ScrollBarThickness = 5
-playerListFrame.Parent = contentHolder
 
-local uiGridLayout = Instance.new("UIGridLayout")
-uiGridLayout.Name = "Grid"
+local uiGridLayout = Instance.new("UIGridLayout", playerListFrame)
 uiGridLayout.CellPadding = UDim2.new(0, 5, 0, 5)
-uiGridLayout.CellSize = UDim2.new(0, 125, 0, 25) -- Ukuran tombol nama pemain
+uiGridLayout.CellSize = UDim2.new(0, 125, 0, 25)
 uiGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-uiGridLayout.Parent = playerListFrame
 
 -- Fungsi untuk memperbarui daftar pemain
 function updatePlayerList()
-    -- Hapus daftar lama
     for _, child in ipairs(playerListFrame:GetChildren()) do
-        if child:IsA("TextButton") then
-            child:Destroy()
-        end
+        if child:IsA("TextButton") then child:Destroy() end
     end
 
-    -- Buat daftar baru
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer then -- Jangan tampilkan diri sendiri
-            local playerButton = Instance.new("TextButton")
-            playerButton.Name = player.Name
-            playerButton.Text = player.Name
+        if player ~= localPlayer then
+            local playerButton = Instance.new("TextButton", playerListFrame)
+            playerButton.Name = player.Name; playerButton.Text = player.Name
             playerButton.Size = UDim2.new(0, 125, 0, 25)
             playerButton.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
             playerButton.TextColor3 = Color3.fromRGB(220, 220, 220)
-            playerButton.Font = Enum.Font.SourceSans
-            playerButton.TextSize = 12
-            playerButton.Parent = playerListFrame
-
-            -- Event saat nama di daftar diklik
+            playerButton.Font = Enum.Font.SourceSans; playerButton.TextSize = 12
             playerButton.MouseButton1Click:Connect(function()
                 nameTextBox.Text = player.Name
-                print("Memilih pemain: " .. player.Name)
             end)
         end
     end
+    
+    -- === PERBAIKAN KRUSIAL ADA DI SINI ===
+    -- Mengatur ukuran kanvas scroll agar sesuai dengan konten di dalamnya.
+    -- Tanpa ini, daftar akan terpotong dan tidak bisa digulir.
+    playerListFrame.CanvasSize = UDim2.new(0, 0, 0, uiGridLayout.AbsoluteContentSize.Y)
 end
 
--- === Logika dan Fungsi Lainnya (Minimize, Drag, Teleport, Close) ===
+-- === Logika dan Fungsi Lainnya (Tidak Berubah) ===
 local isMinimized = false
 local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
 minimizeButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize
@@ -161,10 +147,7 @@ local function teleportToPlayer(targetPlayerName)
     print("Teleportasi berhasil.")
 end
 
-teleportButton.MouseButton1Click:Connect(function()
-    if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) else print("Nama pemain tidak boleh kosong.") end
-end)
-
+teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) else print("Nama pemain tidak boleh kosong.") end end)
 closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); print("UI Teleportasi ditutup.") end)
 
 local dragging, dragStart, startPos
@@ -173,9 +156,7 @@ titleBar.InputChanged:Connect(function(input) if (input.UserInputType == Enum.Us
 
 -- Menempatkan GUI dan Memulai Pembaruan Daftar Pemain
 screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-print("GUI Teleportasi v4.0 berhasil dimuat.")
-
--- Panggil fungsi pertama kali dan hubungkan ke event
+print("GUI Teleportasi v4.1 berhasil dimuat.")
 updatePlayerList()
 Players.PlayerAdded:Connect(updatePlayerList)
 Players.PlayerRemoving:Connect(updatePlayerList)
