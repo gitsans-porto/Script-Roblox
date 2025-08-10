@@ -1,19 +1,19 @@
 --[[
-    Skrip Universal v8.0 - Teleport & Fling
+    Skrip Universal v9.0 - Teleport & Fling
     
-    Pembaruan Fitur (Metode Final):
-    - Mengganti total mekanisme Fling dengan metode "Body Mover" yang sangat kuat.
-    - Memasang BodyVelocity secara langsung ke target untuk memaksa reaksi fisika.
-    - Metode ini didesain untuk keandalan maksimal di berbagai game.
+    Pembaruan Fitur (Metode Final "Welding"):
+    - Mengganti total mekanisme Fling dengan metode pengelasan (welding).
+    - Skrip akan mengikat karakter lokal ke target, lalu menerapkan gaya pada diri sendiri.
+    - Metode ini didesain untuk melewati sistem keamanan server yang canggih.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalMultiToolGUI_v8") then
-    print("Skrip Multi-Tool v8 sudah berjalan.")
+if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalMultiToolGUI_v9") then
+    print("Skrip Multi-Tool v9 sudah berjalan.")
     return
 end
 
-print("Memulai Skrip Multi-Tool Universal v8.0 (Metode Final)...")
+print("Memulai Skrip Multi-Tool Universal v9.0 (Metode Welding)...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -27,10 +27,11 @@ local localPlayer = Players.LocalPlayer
 local isFlinging = false
 local originalPosition
 local originalCharacterTransparency = {}
+local flingWeld -- Variabel untuk menyimpan weld
 
 -- Membuat ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UniversalMultiToolGUI_v8"
+screenGui.Name = "UniversalMultiToolGUI_v9"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
@@ -104,16 +105,18 @@ local function setCharacterVisible(character, visible)
     end
 end
 
--- === FUNGSI FLING UTAMA (METODE BODY MOVER) ===
+-- === FUNGSI FLING UTAMA (METODE WELDING) ===
 local function handleFling(targetPlayerName)
     local myCharacter = localPlayer.Character
-    if not myCharacter or not myCharacter:FindFirstChild("HumanoidRootPart") then print("Karakter lokal tidak valid.") return end
+    local myRoot = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")
+    if not myRoot then print("Karakter lokal tidak valid.") return end
     
     if isFlinging then
         -- === LOGIKA UNTUK STOP FLING ===
         print("Menghentikan Fling dan kembali ke posisi semula...")
-        myCharacter.HumanoidRootPart.Anchored = false
-        myCharacter.HumanoidRootPart.CFrame = originalPosition
+        if flingWeld and flingWeld.Parent then flingWeld:Destroy() end
+        myRoot.Velocity = Vector3.new(0,0,0)
+        myRoot.CFrame = originalPosition
         setCharacterVisible(myCharacter, true)
         
         isFlinging = false
@@ -122,28 +125,27 @@ local function handleFling(targetPlayerName)
     else
         -- === LOGIKA UNTUK MEMULAI FLING ===
         local targetPlayer = Players:FindFirstChild(targetPlayerName)
-        if not (targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")) then print("Target tidak valid untuk di-fling.") return end
+        local targetRoot = targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not targetRoot then print("Target tidak valid untuk di-fling.") return end
         
         print("Memulai Fling pada " .. targetPlayer.Name .. "...")
         
         -- Simpan status & buat tak terlihat
-        originalPosition = myCharacter.HumanoidRootPart.CFrame
+        originalPosition = myRoot.CFrame
         setCharacterVisible(myCharacter, false)
         
-        -- Teleport & Jangkar
-        local targetRoot = targetPlayer.Character.HumanoidRootPart
-        myCharacter.HumanoidRootPart.CFrame = targetRoot.CFrame
-        myCharacter.HumanoidRootPart.Anchored = true
+        -- Teleport & Weld
+        myRoot.CFrame = targetRoot.CFrame
         
-        -- Buat dan pasang "mesin jet" (BodyVelocity) ke target
-        local bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bodyVelocity.Velocity = Vector3.new(math.random(-200, 200), 1000, math.random(-200, 200)) -- Kecepatan dorongan
-        bodyVelocity.P = 50000 -- Agresivitas
-        bodyVelocity.Parent = targetRoot
+        flingWeld = Instance.new("Weld")
+        flingWeld.Part0 = myRoot
+        flingWeld.Part1 = targetRoot
+        flingWeld.C0 = myRoot.CFrame:Inverse() * myRoot.CFrame
+        flingWeld.C1 = targetRoot.CFrame:Inverse() * myRoot.CFrame
+        flingWeld.Parent = myRoot
         
-        -- Hancurkan "mesin jet" setelah 0.5 detik
-        Debris:AddItem(bodyVelocity, 0.5)
+        -- Terapkan gaya pada DIRI SENDIRI
+        myRoot.Velocity = Vector3.new(math.random(-500, 500), 1500, math.random(-500, 500))
         
         isFlinging = true
         flingButton.Text = "STOP FLING"
@@ -182,7 +184,7 @@ local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input)
 
 -- Inisialisasi
 screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-print("GUI Multi-Tool v8.0 (Final) berhasil dimuat.")
+print("GUI Multi-Tool v9.0 (Metode Welding) berhasil dimuat.")
 updatePlayerList()
 Players.PlayerAdded:Connect(updatePlayerList)
 Players.PlayerRemoving:Connect(updatePlayerList)
