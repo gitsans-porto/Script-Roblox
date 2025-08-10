@@ -1,29 +1,38 @@
 --[[
-    Skrip Universal v13.0 - Teleport & Blender-Fling
+    Skrip Universal v14.0 - Teleport & Fling (Kontrol Penuh)
     
-    Pembaruan Fitur:
-    - Rombak total fitur Fling menjadi metode "Blender".
-    - Membuat part pemutar terpisah yang dilas ke pemain untuk menghindari fling diri sendiri.
-    - UI Fling tetap menggunakan tombol ON/OFF yang simpel dan efektif.
-    - Stabilitas penuh dan reaktivasi otomatis setelah respawn.
+    Pembaruan Kritis:
+    - Menggunakan Collision Groups untuk memisahkan fisika fling dari kontrol pemain.
+    - Pemain sekarang memiliki KONTROL PENUH atas gerakan dan kamera saat fling aktif.
+    - Aura pemutar sekarang menjadi objek terpisah yang tidak mengganggu pemain.
+    - Solusi paling stabil dan profesional untuk masalah kontrol.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if _G.UniversalMultiToolLoaded_v13 then
-    print("Skrip Multi-Tool v13 sudah berjalan.")
+if _G.UniversalMultiToolLoaded_v14 then
+    print("Skrip Multi-Tool v14 sudah berjalan.")
     return
 end
-_G.UniversalMultiToolLoaded_v13 = true
+_G.UniversalMultiToolLoaded_v14 = true
 
-print("Memulai Skrip Multi-Tool Universal v13.0...")
+print("Memulai Skrip Multi-Tool Universal v14.0...")
 
 -- Services
 local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
+local PhysicsService = game:GetService("PhysicsService")
 
 -- Pemain Lokal
 local localPlayer = Players.LocalPlayer
+
+-- Konfigurasi Collision Groups
+local PLAYER_GROUP = "FlingPlayerGroup"
+local AURA_GROUP = "FlingAuraGroup"
+
+pcall(function() PhysicsService:CreateCollisionGroup(PLAYER_GROUP) end)
+pcall(function() PhysicsService:CreateCollisionGroup(AURA_GROUP) end)
+PhysicsService:CollisionGroupSetCollidable(PLAYER_GROUP, AURA_GROUP, false)
 
 -- Variabel Status
 local blenderFlingActive = false
@@ -32,22 +41,10 @@ local blenderConnection = nil
 local flingDebounce = {}
 
 -- Membuat ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UniversalMultiToolGUI_v13"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+local screenGui = Instance.new("ScreenGui"); screenGui.Name = "UniversalMultiToolGUI_v14"; screenGui.ResetOnSpawn = false; screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 -- Membuat Frame Utama
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-local originalSize = UDim2.new(0, 300, 0, 320)
-mainFrame.Size = originalSize
-mainFrame.Position = UDim2.new(0.5, -150, 0.5, -160)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37)
-mainFrame.BorderColor3 = Color3.fromRGB(48, 51, 57)
-mainFrame.BorderSizePixel = 1
-mainFrame.ClipsDescendants = true
-mainFrame.Parent = screenGui
+local mainFrame = Instance.new("Frame"); mainFrame.Name = "MainFrame"; local originalSize = UDim2.new(0, 300, 0, 320); mainFrame.Size = originalSize; mainFrame.Position = UDim2.new(0.5, -150, 0.5, -160); mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37); mainFrame.BorderColor3 = Color3.fromRGB(48, 51, 57); mainFrame.BorderSizePixel = 1; mainFrame.ClipsDescendants = true; mainFrame.Parent = screenGui
 
 -- Membuat Title Bar
 local titleBar = Instance.new("Frame", mainFrame); titleBar.Name = "TitleBar"; titleBar.Size = UDim2.new(1, 0, 0, 30); titleBar.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
@@ -94,7 +91,7 @@ local function onBlenderTouch(hit)
     if flingDebounce[targetPlayer] then return end
     flingDebounce[targetPlayer] = true
     
-    print("Blender Fling triggered on: " .. targetPlayer.Name)
+    print("Aura Fling triggered on: " .. targetPlayer.Name)
     targetRoot.Velocity = Vector3.new(math.random(-500, 500), 1500, math.random(-500, 500))
     
     task.delay(1, function() flingDebounce[targetPlayer] = nil end)
@@ -104,7 +101,7 @@ local function deactivateBlenderFling()
     if blenderPart and blenderPart.Parent then blenderPart:Destroy() end
     if blenderConnection then blenderConnection:Disconnect(); blenderConnection = nil end
     blenderPart = nil
-    print("Blender Fling DEACTIVATED")
+    print("Aura Fling DEACTIVATED")
 end
 
 local function activateBlenderFling()
@@ -115,12 +112,13 @@ local function activateBlenderFling()
     deactivateBlenderFling() 
     
     blenderPart = Instance.new("Part")
-    blenderPart.Name = "BlenderCore"
-    blenderPart.Size = Vector3.new(6, 6, 6)
-    blenderPart.CanCollide = false
+    blenderPart.Name = "FlingAura"
+    blenderPart.Size = Vector3.new(8, 8, 8)
+    blenderPart.CanCollide = true
     blenderPart.Anchored = false
     blenderPart.Massless = true
     blenderPart.Transparency = 1
+    blenderPart.CollisionGroup = AURA_GROUP -- Tetapkan ke grup aura
     blenderPart.Parent = myCharacter
 
     local weld = Instance.new("WeldConstraint", blenderPart)
@@ -133,7 +131,7 @@ local function activateBlenderFling()
     angularVelocity.P = 50000
     
     blenderConnection = blenderPart.Touched:Connect(onBlenderTouch)
-    print("Blender Fling ACTIVATED")
+    print("Aura Fling ACTIVATED")
 end
 
 blenderFlingToggleButton.MouseButton1Click:Connect(function()
@@ -185,27 +183,41 @@ function updatePlayerList()
     playerListFrame.CanvasSize = UDim2.new(0, 0, 0, uiGridLayout.AbsoluteContentSize.Y)
 end
 
+-- Menetapkan karakter ke grup kolisi
+local function assignCharacterToGroup(character)
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CollisionGroup = PLAYER_GROUP
+        end
+    end
+end
+
 -- Inisialisasi & Event Listeners
 teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) end end)
-closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v13 = false end)
+closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v14 = false end)
 local isMinimized = false; local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 minimizeButton.MouseButton1Click:Connect(function() isMinimized = not isMinimized; local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize; if isMinimized then minimizeButton.Text = "❐" else minimizeButton.Text = "_" end; contentHolder.Visible = not isMinimized; TweenService:Create(mainFrame, tweenInfo, {Size = targetSize}):Play() end)
 local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging, dragStart, startPos = true, input.Position, mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end); titleBar.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 
 local function initialize()
     screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-    print("GUI Multi-Tool v13.0 berhasil dimuat.")
+    print("GUI Multi-Tool v14.0 berhasil dimuat.")
     updatePlayerList()
     if _G.playerAddedConnection then _G.playerAddedConnection:Disconnect() end
     if _G.playerRemovingConnection then _G.playerRemovingConnection:Disconnect() end
     _G.playerAddedConnection = Players.PlayerAdded:Connect(updatePlayerList)
     _G.playerRemovingConnection = Players.PlayerRemoving:Connect(updatePlayerList)
+    
+    if localPlayer.Character then
+        assignCharacterToGroup(localPlayer.Character)
+    end
 end
 
 initialize()
 
 localPlayer.CharacterAdded:Connect(function(character)
-    print("Karakter baru terdeteksi. Memeriksa status Blender Fling...")
+    print("Karakter baru terdeteksi. Menetapkan grup kolisi dan memeriksa status Fling...")
+    assignCharacterToGroup(character)
     if blenderFlingActive then
         task.wait(1) 
         activateBlenderFling()
