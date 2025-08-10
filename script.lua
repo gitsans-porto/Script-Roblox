@@ -1,19 +1,19 @@
 --[[
-    Skrip Universal v5.0 - Teleport & Fling
+    Skrip Universal v5.1 - Teleport & Fling
     
-    Fitur Baru:
-    - Navbar untuk beralih antara mode Teleport dan Fling.
-    - Fitur Fling untuk membuat pemain lain terpental dari jarak jauh.
-    - UI yang lebih terstruktur dan efisien.
+    Perbaikan Bug (Fling):
+    - Memperbaiki masalah di mana fitur fling tidak berfungsi.
+    - Menghubungkan VectorForce ke Attachment-nya dengan benar (force.Attachment0).
+    - Meningkatkan kekuatan fling secara signifikan untuk efek yang lebih dramatis.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalMultiToolGUI_v5") then
-    print("Skrip Multi-Tool v5 sudah berjalan.")
+if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalMultiToolGUI_v5_1") then
+    print("Skrip Multi-Tool v5.1 sudah berjalan.")
     return
 end
 
-print("Memulai Skrip Multi-Tool Universal v5.0...")
+print("Memulai Skrip Multi-Tool Universal v5.1...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -25,14 +25,14 @@ local localPlayer = Players.LocalPlayer
 
 -- Membuat ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UniversalMultiToolGUI_v5"
+screenGui.Name = "UniversalMultiToolGUI_v5_1"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 -- Membuat Frame Utama
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-local originalSize = UDim2.new(0, 300, 0, 320) -- Ukuran diperbesar untuk navbar
+local originalSize = UDim2.new(0, 300, 0, 320)
 mainFrame.Size = originalSize
 mainFrame.Position = UDim2.new(0.5, -150, 0.5, -160)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37)
@@ -47,7 +47,7 @@ titleBar.Name = "TitleBar"
 titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
 titleBar.BorderSizePixel = 0
--- (Isi dari Title Bar tetap sama)
+-- (Isi dari Title Bar)
 local titleLabel = Instance.new("TextLabel", titleBar); titleLabel.Size = UDim2.new(1, -60, 1, 0); titleLabel.Position = UDim2.new(0, 10, 0, 0); titleLabel.BackgroundColor3 = titleBar.BackgroundColor3; titleLabel.Font = Enum.Font.SourceSansSemibold; titleLabel.Text = "Multi-Tool"; titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255); titleLabel.TextSize = 16; titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 local closeButton = Instance.new("TextButton", titleBar); closeButton.Size = UDim2.new(0, 30, 1, 0); closeButton.Position = UDim2.new(1, -30, 0, 0); closeButton.BackgroundColor3 = titleBar.BackgroundColor3; closeButton.Font = Enum.Font.SourceSansBold; closeButton.Text = "X"; closeButton.TextColor3 = Color3.fromRGB(200, 200, 200); closeButton.TextSize = 20
 local minimizeButton = Instance.new("TextButton", titleBar); minimizeButton.Size = UDim2.new(0, 30, 1, 0); minimizeButton.Position = UDim2.new(1, -60, 0, 0); minimizeButton.BackgroundColor3 = titleBar.BackgroundColor3; minimizeButton.Font = Enum.Font.SourceSansBold; minimizeButton.Text = "_"; minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200); minimizeButton.TextSize = 20
@@ -59,66 +59,22 @@ contentHolder.Size = UDim2.new(1, 0, 1, -30)
 contentHolder.Position = UDim2.new(0, 0, 0, 30)
 contentHolder.BackgroundTransparency = 1
 
--- === FITUR BARU: NAVBAR ===
-local navBar = Instance.new("Frame", contentHolder)
-navBar.Name = "NavBar"
-navBar.Size = UDim2.new(1, -20, 0, 30)
-navBar.Position = UDim2.new(0, 10, 0, 10)
-navBar.BackgroundColor3 = Color3.fromRGB(40, 42, 47)
-navBar.BorderSizePixel = 0
-local navLayout = Instance.new("UIListLayout", navBar)
-navLayout.FillDirection = Enum.FillDirection.Horizontal
-navLayout.SortOrder = Enum.SortOrder.LayoutOrder
+-- Navbar
+local navBar = Instance.new("Frame", contentHolder); navBar.Name = "NavBar"; navBar.Size = UDim2.new(1, -20, 0, 30); navBar.Position = UDim2.new(0, 10, 0, 10); navBar.BackgroundColor3 = Color3.fromRGB(40, 42, 47)
+local navLayout = Instance.new("UIListLayout", navBar); navLayout.FillDirection = Enum.FillDirection.Horizontal
+local navTeleportBtn = Instance.new("TextButton", navBar); navTeleportBtn.Name = "NavTeleport"; navTeleportBtn.Size = UDim2.new(0.5, 0, 1, 0); navTeleportBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); navTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255); navTeleportBtn.Font = Enum.Font.SourceSansBold; navTeleportBtn.Text = "Teleport"; navTeleportBtn.TextSize = 14
+local navFlingBtn = Instance.new("TextButton", navBar); navFlingBtn.Name = "NavFling"; navFlingBtn.Size = UDim2.new(0.5, 0, 1, 0); navFlingBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180); navFlingBtn.Font = Enum.Font.SourceSansBold; navFlingBtn.Text = "Fling"; navFlingBtn.TextSize = 14
 
-local navTeleportBtn = Instance.new("TextButton", navBar)
-navTeleportBtn.Name = "NavTeleport"
-navTeleportBtn.Size = UDim2.new(0.5, 0, 1, 0)
-navTeleportBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242) -- Warna aktif
-navTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-navTeleportBtn.Font = Enum.Font.SourceSansBold; navTeleportBtn.Text = "Teleport"; navTeleportBtn.TextSize = 14
+-- Area Halaman Fitur
+local pagesHolder = Instance.new("Frame", contentHolder); pagesHolder.Size = UDim2.new(1, 0, 0, 40); pagesHolder.Position = UDim2.new(0, 0, 0, 90); pagesHolder.BackgroundTransparency = 1
+local teleportPage = Instance.new("Frame", pagesHolder); teleportPage.Size = UDim2.new(1, 0, 1, 0); teleportPage.BackgroundTransparency = 1; teleportPage.Visible = true
+local flingPage = Instance.new("Frame", pagesHolder); flingPage.Size = UDim2.new(1, 0, 1, 0); flingPage.BackgroundTransparency = 1; flingPage.Visible = false
+local teleportButton = Instance.new("TextButton", teleportPage); teleportButton.Size = UDim2.new(1, -20, 1, -5); teleportButton.Position = UDim2.new(0, 10, 0, 0); teleportButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242); teleportButton.Font = Enum.Font.SourceSansBold; teleportButton.Text = "TELEPORT"; teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255); teleportButton.TextSize = 16
+local flingButton = Instance.new("TextButton", flingPage); flingButton.Size = UDim2.new(1, -20, 1, -5); flingButton.Position = UDim2.new(0, 10, 0, 0); flingButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69); flingButton.Font = Enum.Font.SourceSansBold; flingButton.Text = "FLING"; flingButton.TextColor3 = Color3.fromRGB(255, 255, 255); flingButton.TextSize = 16
 
-local navFlingBtn = Instance.new("TextButton", navBar)
-navFlingBtn.Name = "NavFling"
-navFlingBtn.Size = UDim2.new(0.5, 0, 1, 0)
-navFlingBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63) -- Warna non-aktif
-navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
-navFlingBtn.Font = Enum.Font.SourceSansBold; navFlingBtn.Text = "Fling"; navFlingBtn.TextSize = 14
-
--- Area untuk Konten Fitur (Pages)
-local pagesHolder = Instance.new("Frame", contentHolder)
-pagesHolder.Size = UDim2.new(1, 0, 0, 40)
-pagesHolder.Position = UDim2.new(0, 0, 0, 90)
-pagesHolder.BackgroundTransparency = 1
-
-local teleportPage = Instance.new("Frame", pagesHolder)
-teleportPage.Size = UDim2.new(1, 0, 1, 0)
-teleportPage.BackgroundTransparency = 1
-teleportPage.Visible = true -- Halaman default
-
-local flingPage = Instance.new("Frame", pagesHolder)
-flingPage.Size = UDim2.new(1, 0, 1, 0)
-flingPage.BackgroundTransparency = 1
-flingPage.Visible = false
-
--- Tombol Aksi untuk setiap halaman
-local teleportButton = Instance.new("TextButton", teleportPage)
-teleportButton.Size = UDim2.new(1, -20, 1, -5); teleportButton.Position = UDim2.new(0, 10, 0, 0)
-teleportButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242); teleportButton.Font = Enum.Font.SourceSansBold; teleportButton.Text = "TELEPORT"; teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255); teleportButton.TextSize = 16
-
-local flingButton = Instance.new("TextButton", flingPage)
-flingButton.Size = UDim2.new(1, -20, 1, -5); flingButton.Position = UDim2.new(0, 10, 0, 0)
-flingButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69); flingButton.Font = Enum.Font.SourceSansBold; flingButton.Text = "FLING"; flingButton.TextColor3 = Color3.fromRGB(255, 255, 255); flingButton.TextSize = 16
-
--- Komponen Bersama (Input & Daftar Pemain)
-local nameTextBox = Instance.new("TextBox", contentHolder)
-nameTextBox.Size = UDim2.new(1, -20, 0, 35); nameTextBox.Position = UDim2.new(0, 10, 0, 50)
-nameTextBox.BackgroundColor3 = Color3.fromRGB(40, 42, 47); nameTextBox.PlaceholderText = "Pilih dari daftar atau ketik..."
-nameTextBox.TextColor3 = Color3.fromRGB(220, 220, 220); nameTextBox.Font = Enum.Font.SourceSans; nameTextBox.TextSize = 14
-
-local playerListFrame = Instance.new("ScrollingFrame", contentHolder)
-playerListFrame.Size = UDim2.new(1, -20, 1, -140); playerListFrame.Position = UDim2.new(0, 10, 0, 130)
-playerListFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 47); playerListFrame.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242)
-playerListFrame.ScrollBarThickness = 5
+-- Komponen Bersama
+local nameTextBox = Instance.new("TextBox", contentHolder); nameTextBox.Size = UDim2.new(1, -20, 0, 35); nameTextBox.Position = UDim2.new(0, 10, 0, 50); nameTextBox.BackgroundColor3 = Color3.fromRGB(40, 42, 47); nameTextBox.PlaceholderText = "Pilih dari daftar atau ketik..."; nameTextBox.TextColor3 = Color3.fromRGB(220, 220, 220); nameTextBox.Font = Enum.Font.SourceSans; nameTextBox.TextSize = 14
+local playerListFrame = Instance.new("ScrollingFrame", contentHolder); playerListFrame.Size = UDim2.new(1, -20, 1, -140); playerListFrame.Position = UDim2.new(0, 10, 0, 130); playerListFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 47); playerListFrame.ScrollBarImageColor3 = Color3.fromRGB(88, 101, 242); playerListFrame.ScrollBarThickness = 5
 local uiGridLayout = Instance.new("UIGridLayout", playerListFrame); uiGridLayout.CellPadding = UDim2.new(0, 5, 0, 5); uiGridLayout.CellSize = UDim2.new(0, 125, 0, 25)
 
 -- === LOGIKA DAN FUNGSI ===
@@ -138,22 +94,33 @@ end
 navTeleportBtn.MouseButton1Click:Connect(function() switchPage("Teleport") end)
 navFlingBtn.MouseButton1Click:Connect(function() switchPage("Fling") end)
 
--- Fungsi Fling
+-- === FUNGSI FLING YANG DIPERBAIKI ===
 local function flingPlayer(targetPlayerName)
     local targetPlayer = Players:FindFirstChild(targetPlayerName)
-    if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        print("Target tidak valid atau tidak memiliki HumanoidRootPart.")
+    if not (targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")) then
+        print("Target tidak valid untuk di-fling.")
         return
     end
     print("Mencoba fling " .. targetPlayer.Name .. "...")
     local rootPart = targetPlayer.Character.HumanoidRootPart
     
+    -- Buat titik tumpu untuk gaya
     local attachment = Instance.new("Attachment", rootPart)
-    local force = Instance.new("VectorForce", attachment)
-    force.Force = Vector3.new(math.random(-2, 2) * 50000, 500000, math.random(-2, 2) * 50000) -- Gaya ke atas dan sedikit acak
+    
+    -- Buat objek gaya
+    local force = Instance.new("VectorForce")
+    force.Parent = rootPart
+    force.Attachment0 = attachment -- INI BAGIAN PENTING YANG DIPERBAIKI
+    force.Force = Vector3.new(0, 750000, 0) -- Kekuatan ke atas yang sangat besar
     force.RelativeTo = Enum.ActuatorRelativeTo.World
     
-    Debris:AddItem(attachment, 0.2) -- Hapus gaya setelah 0.2 detik
+    -- Tambahkan sedikit gaya acak ke samping agar lebih dramatis
+    force.Force = force.Force + Vector3.new(math.random(-150000, 150000), 0, math.random(-150000, 150000))
+    
+    -- Hapus gaya dan titik tumpu setelah sepersekian detik agar efeknya seperti ledakan
+    Debris:AddItem(force, 0.2)
+    Debris:AddItem(attachment, 0.25)
+    
     print(targetPlayer.Name .. " berhasil di-fling!")
 end
 
@@ -178,25 +145,17 @@ function updatePlayerList()
     playerListFrame.CanvasSize = UDim2.new(0, 0, 0, uiGridLayout.AbsoluteContentSize.Y)
 end
 
--- Event Listeners
+-- Event Listeners (tidak berubah)
 teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) end end)
 flingButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then flingPlayer(nameTextBox.Text) end end)
 closeButton.MouseButton1Click:Connect(function() screenGui:Destroy() end)
-
 local isMinimized = false; local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-minimizeButton.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized; local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize
-    if isMinimized then minimizeButton.Text = "❐" else minimizeButton.Text = "_" end
-    contentHolder.Visible = not isMinimized; TweenService:Create(mainFrame, tweenInfo, {Size = targetSize}):Play()
-end)
-
-local dragging, dragStart, startPos
-titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging, dragStart, startPos = true, input.Position, mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
-titleBar.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+minimizeButton.MouseButton1Click:Connect(function() isMinimized = not isMinimized; local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize; if isMinimized then minimizeButton.Text = "❐" else minimizeButton.Text = "_" end; contentHolder.Visible = not isMinimized; TweenService:Create(mainFrame, tweenInfo, {Size = targetSize}):Play() end)
+local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging, dragStart, startPos = true, input.Position, mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end); titleBar.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 
 -- Inisialisasi
 screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-print("GUI Multi-Tool v5.0 berhasil dimuat.")
+print("GUI Multi-Tool v5.1 berhasil dimuat.")
 updatePlayerList()
 Players.PlayerAdded:Connect(updatePlayerList)
 Players.PlayerRemoving:Connect(updatePlayerList)
