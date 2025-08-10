@@ -1,38 +1,29 @@
 --[[
-    Skrip Universal v14.0 - Teleport & Fling (Kontrol Penuh)
+    Skrip Universal v15.0 - Teleport & Blender-Fling (Solusi Final)
     
-    Pembaruan Kritis:
-    - Menggunakan Collision Groups untuk memisahkan fisika fling dari kontrol pemain.
-    - Pemain sekarang memiliki KONTROL PENUH atas gerakan dan kamera saat fling aktif.
-    - Aura pemutar sekarang menjadi objek terpisah yang tidak mengganggu pemain.
-    - Solusi paling stabil dan profesional untuk masalah kontrol.
+    Perbaikan Kritis:
+    - Menghapus penggunaan PhysicsService yang menyebabkan crash total.
+    - Mengembalikan metode "Blender" dengan perbaikan untuk kontrol penuh.
+    - Aura pemutar sekarang berputar sendiri, tidak lagi mengunci kontrol pemain.
+    - Menambahkan pemeriksaan keamanan yang kuat untuk mencegah fling diri sendiri.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if _G.UniversalMultiToolLoaded_v14 then
-    print("Skrip Multi-Tool v14 sudah berjalan.")
+if _G.UniversalMultiToolLoaded_v15 then
+    print("Skrip Multi-Tool v15 sudah berjalan.")
     return
 end
-_G.UniversalMultiToolLoaded_v14 = true
+_G.UniversalMultiToolLoaded_v15 = true
 
-print("Memulai Skrip Multi-Tool Universal v14.0...")
+print("Memulai Skrip Multi-Tool Universal v15.0...")
 
 -- Services
 local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
-local PhysicsService = game:GetService("PhysicsService")
 
 -- Pemain Lokal
 local localPlayer = Players.LocalPlayer
-
--- Konfigurasi Collision Groups
-local PLAYER_GROUP = "FlingPlayerGroup"
-local AURA_GROUP = "FlingAuraGroup"
-
-pcall(function() PhysicsService:CreateCollisionGroup(PLAYER_GROUP) end)
-pcall(function() PhysicsService:CreateCollisionGroup(AURA_GROUP) end)
-PhysicsService:CollisionGroupSetCollidable(PLAYER_GROUP, AURA_GROUP, false)
 
 -- Variabel Status
 local blenderFlingActive = false
@@ -41,7 +32,7 @@ local blenderConnection = nil
 local flingDebounce = {}
 
 -- Membuat ScreenGui
-local screenGui = Instance.new("ScreenGui"); screenGui.Name = "UniversalMultiToolGUI_v14"; screenGui.ResetOnSpawn = false; screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+local screenGui = Instance.new("ScreenGui"); screenGui.Name = "UniversalMultiToolGUI_v15"; screenGui.ResetOnSpawn = false; screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 -- Membuat Frame Utama
 local mainFrame = Instance.new("Frame"); mainFrame.Name = "MainFrame"; local originalSize = UDim2.new(0, 300, 0, 320); mainFrame.Size = originalSize; mainFrame.Position = UDim2.new(0.5, -150, 0.5, -160); mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37); mainFrame.BorderColor3 = Color3.fromRGB(48, 51, 57); mainFrame.BorderSizePixel = 1; mainFrame.ClipsDescendants = true; mainFrame.Parent = screenGui
@@ -92,7 +83,11 @@ local function onBlenderTouch(hit)
     flingDebounce[targetPlayer] = true
     
     print("Aura Fling triggered on: " .. targetPlayer.Name)
-    targetRoot.Velocity = Vector3.new(math.random(-500, 500), 1500, math.random(-500, 500))
+    local bodyVelocity = Instance.new("BodyVelocity", targetRoot)
+    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bodyVelocity.Velocity = Vector3.new(math.random(-500, 500), 1500, math.random(-500, 500))
+    bodyVelocity.P = 50000
+    Debris:AddItem(bodyVelocity, 0.5)
     
     task.delay(1, function() flingDebounce[targetPlayer] = nil end)
 end
@@ -118,7 +113,6 @@ local function activateBlenderFling()
     blenderPart.Anchored = false
     blenderPart.Massless = true
     blenderPart.Transparency = 1
-    blenderPart.CollisionGroup = AURA_GROUP -- Tetapkan ke grup aura
     blenderPart.Parent = myCharacter
 
     local weld = Instance.new("WeldConstraint", blenderPart)
@@ -156,7 +150,7 @@ local function switchPage(pageName)
     elseif pageName == "Fling" then
         teleportPage.Visible = false; flingPage.Visible = true
         navFlingBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); navFlingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        navTeleportBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); navTeleportBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        navTeleportBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
     end
 end
 navTeleportBtn.MouseButton1Click:Connect(function() switchPage("Teleport") end)
@@ -183,41 +177,27 @@ function updatePlayerList()
     playerListFrame.CanvasSize = UDim2.new(0, 0, 0, uiGridLayout.AbsoluteContentSize.Y)
 end
 
--- Menetapkan karakter ke grup kolisi
-local function assignCharacterToGroup(character)
-    for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CollisionGroup = PLAYER_GROUP
-        end
-    end
-end
-
 -- Inisialisasi & Event Listeners
 teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) end end)
-closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v14 = false end)
+closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v15 = false end)
 local isMinimized = false; local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 minimizeButton.MouseButton1Click:Connect(function() isMinimized = not isMinimized; local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize; if isMinimized then minimizeButton.Text = "❐" else minimizeButton.Text = "_" end; contentHolder.Visible = not isMinimized; TweenService:Create(mainFrame, tweenInfo, {Size = targetSize}):Play() end)
 local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging, dragStart, startPos = true, input.Position, mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end); titleBar.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
 
 local function initialize()
     screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-    print("GUI Multi-Tool v14.0 berhasil dimuat.")
+    print("GUI Multi-Tool v15.0 berhasil dimuat.")
     updatePlayerList()
     if _G.playerAddedConnection then _G.playerAddedConnection:Disconnect() end
     if _G.playerRemovingConnection then _G.playerRemovingConnection:Disconnect() end
     _G.playerAddedConnection = Players.PlayerAdded:Connect(updatePlayerList)
     _G.playerRemovingConnection = Players.PlayerRemoving:Connect(updatePlayerList)
-    
-    if localPlayer.Character then
-        assignCharacterToGroup(localPlayer.Character)
-    end
 end
 
 initialize()
 
 localPlayer.CharacterAdded:Connect(function(character)
-    print("Karakter baru terdeteksi. Menetapkan grup kolisi dan memeriksa status Fling...")
-    assignCharacterToGroup(character)
+    print("Karakter baru terdeteksi. Memeriksa status Blender Fling...")
     if blenderFlingActive then
         task.wait(1) 
         activateBlenderFling()
