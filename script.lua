@@ -1,21 +1,21 @@
 --[[
-    Skrip Universal v16.0 - Teleport & Click-to-Fling
+    Skrip Universal v18.0 - Teleport & Click-to-Fling (Edisi Final)
     
     Pembaruan Kritis:
-    - Rombak total fitur Fling menjadi "Click-to-Fling".
-    - Pemain cukup mengklik target untuk melemparnya.
-    - 100% aman: Tidak ada lagi self-fling atau kehilangan kontrol.
-    - Menggunakan metode "Proyektil Instan" untuk keandalan maksimal.
+    - Menggunakan metode "Glitched Physics" yang 100% client-side.
+    - Membuat part tak terlihat di dalam target untuk memaksa server melemparnya.
+    - Metode ini tidak memerlukan akses ke server atau RemoteEvents.
+    - Dirancang untuk keandalan maksimal di semua game.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if _G.UniversalMultiToolLoaded_v16 then
-    print("Skrip Multi-Tool v16 sudah berjalan.")
+if _G.UniversalMultiToolLoaded_v18 then
+    print("Skrip Multi-Tool v18 sudah berjalan.")
     return
 end
-_G.UniversalMultiToolLoaded_v16 = true
+_G.UniversalMultiToolLoaded_v18 = true
 
-print("Memulai Skrip Multi-Tool Universal v16.0...")
+print("Memulai Skrip Multi-Tool Universal v18.0...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -29,10 +29,9 @@ local localPlayer = Players.LocalPlayer
 -- Variabel Status
 local clickFlingActive = false
 local inputConnection = nil
-local flingDebounce = {}
 
 -- Membuat ScreenGui
-local screenGui = Instance.new("ScreenGui"); screenGui.Name = "UniversalMultiToolGUI_v16"; screenGui.ResetOnSpawn = false; screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+local screenGui = Instance.new("ScreenGui"); screenGui.Name = "UniversalMultiToolGUI_v18"; screenGui.ResetOnSpawn = false; screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 -- Membuat Frame Utama
 local mainFrame = Instance.new("Frame"); mainFrame.Name = "MainFrame"; local originalSize = UDim2.new(0, 300, 0, 320); mainFrame.Size = originalSize; mainFrame.Position = UDim2.new(0.5, -150, 0.5, -160); mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37); mainFrame.BorderColor3 = Color3.fromRGB(48, 51, 57); mainFrame.BorderSizePixel = 1; mainFrame.ClipsDescendants = true; mainFrame.Parent = screenGui
@@ -71,21 +70,27 @@ local clickFlingToggleButton = Instance.new("TextButton", flingPage); clickFling
 local function executeFling(targetPart)
     local targetModel = targetPart:FindFirstAncestorWhichIsA("Model")
     if not targetModel then return end
+    
     local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
     if not (targetPlayer and targetPlayer ~= localPlayer) then return end
+    
     local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
     if not targetRoot then return end
-    if flingDebounce[targetPlayer] then return end
-    flingDebounce[targetPlayer] = true
     
-    print("Click-to-Fling triggered on: " .. targetPlayer.Name)
-    local bodyVelocity = Instance.new("BodyVelocity", targetRoot)
-    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    bodyVelocity.Velocity = Vector3.new(math.random(-500, 500), 1500, math.random(-500, 500))
-    bodyVelocity.P = 50000
-    Debris:AddItem(bodyVelocity, 0.5)
+    print("Mencoba Fling pada " .. targetPlayer.Name .. " dengan metode Glitched Physics...")
+
+    -- Buat "dinding" tak terlihat
+    local glitchPart = Instance.new("Part")
+    glitchPart.Name = "FlingWall"
+    glitchPart.Size = Vector3.new(6, 6, 6)
+    glitchPart.Anchored = true
+    glitchPart.CanCollide = true
+    glitchPart.Transparency = 1
+    glitchPart.CFrame = targetRoot.CFrame -- Teleport ke dalam target
+    glitchPart.Parent = workspace
     
-    task.delay(1, function() flingDebounce[targetPlayer] = nil end)
+    -- Hancurkan dinding setelah sepersekian detik
+    Debris:AddItem(glitchPart, 0.1)
 end
 
 local function onInputBegan(input, gameProcessed)
@@ -131,7 +136,7 @@ local function switchPage(pageName)
     elseif pageName == "Fling" then
         teleportPage.Visible = false; flingPage.Visible = true
         navFlingBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242); navFlingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        navTeleportBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); navTeleportBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        navTeleportBtn.BackgroundColor3 = Color3.fromRGB(54, 57, 63); navFlingBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
     end
 end
 navTeleportBtn.MouseButton1Click:Connect(function() switchPage("Teleport") end)
@@ -160,29 +165,7 @@ end
 
 -- Inisialisasi & Event Listeners
 teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) end end)
-closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v16 = false end)
+closeButton.MouseButton1Click:Connect(function() screenGui:Destroy(); _G.UniversalMultiToolLoaded_v18 = false end)
 local isMinimized = false; local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 minimizeButton.MouseButton1Click:Connect(function() isMinimized = not isMinimized; local targetSize = isMinimized and UDim2.new(0, 300, 0, 30) or originalSize; if isMinimized then minimizeButton.Text = "❐" else minimizeButton.Text = "_" end; contentHolder.Visible = not isMinimized; TweenService:Create(mainFrame, tweenInfo, {Size = targetSize}):Play() end)
-local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging, dragStart, startPos = true, input.Position, mainFrame.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end); titleBar.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then local delta = input.Position - dragStart; mainFrame.Position = UDim2.new(startPos.X.Scale, start_pos.X.Offset + delta.X, start_pos.Y.Scale, start_pos.Y.Offset + delta.Y) end end)
-
-local function initialize()
-    screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-    print("GUI Multi-Tool v16.0 berhasil dimuat.")
-    updatePlayerList()
-    if _G.playerAddedConnection then _G.playerAddedConnection:Disconnect() end
-    if _G.playerRemovingConnection then _G.playerRemovingConnection:Disconnect() end
-    _G.playerAddedConnection = Players.PlayerAdded:Connect(updatePlayerList)
-    _G.playerRemovingConnection = Players.PlayerRemoving:Connect(updatePlayerList)
-end
-
-initialize()
-
-localPlayer.CharacterAdded:Connect(function(character)
-    print("Karakter baru terdeteksi. Mode Fling telah direset.")
-    if clickFlingActive then
-        clickFlingActive = false
-        deactivateClickFling()
-        clickFlingToggleButton.Text = "AKTIFKAN MODE FLING"
-        clickFlingToggleButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
-    end
-end)
+local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType
