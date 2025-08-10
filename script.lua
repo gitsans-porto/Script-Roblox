@@ -1,64 +1,105 @@
 --[[
-    Skrip Teleportasi Pemain (Versi Loadstring)
-    Dibuat untuk dieksekusi melalui exploit executor.
-    Skrip ini akan membuat UI-nya sendiri secara dinamis.
+    Skrip Teleportasi Universal v2.0
+    Didesain untuk kompatibilitas maksimal di berbagai game Roblox.
+    
+    Fitur:
+    - Struktur GUI yang benar (menggunakan ScreenGui).
+    - Fungsi geser (drag) kustom yang andal.
+    - Tidak hilang saat respawn.
+    - Tombol tutup.
+    - Pesan diagnostik untuk debugging.
 ]]
 
--- Mencegah skrip berjalan lebih dari sekali dan membuat UI duplikat
-if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("TeleportUI_Frame") then
+-- Mencegah skrip berjalan dua kali
+if game.Players.LocalPlayer:FindFirstChild("PlayerGui") and game.Players.LocalPlayer.PlayerGui:FindFirstChild("UniversalTeleportGUI") then
+    print("Skrip Teleportasi sudah berjalan.")
     return
 end
 
--- Mendapatkan Service dan pemain lokal
+print("Memulai Skrip Teleportasi Universal v2.0...")
+
+-- Services
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+-- Pemain Lokal
 local localPlayer = Players.LocalPlayer
-local playerGui = localPlayer:WaitForChild("PlayerGui")
+if not localPlayer then
+    warn("Gagal mendapatkan pemain lokal.")
+    return
+end
 
--- Membuat elemen-elemen UI
+-- Membuat ScreenGui (Wadah Utama UI)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UniversalTeleportGUI"
+screenGui.ResetOnSpawn = false -- Agar tidak hilang saat mati/respawn
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+
+-- Membuat Frame Utama
 local mainFrame = Instance.new("Frame")
-local nameTextBox = Instance.new("TextBox")
-local teleportButton = Instance.new("TextButton")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 300, 0, 130)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -65)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 37)
+mainFrame.BorderColor3 = Color3.fromRGB(48, 51, 57)
+mainFrame.BorderSizePixel = 1
+mainFrame.Parent = screenGui
+
+-- Membuat Title Bar (Untuk Judul dan Dragging)
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
 local titleLabel = Instance.new("TextLabel")
-
--- Konfigurasi Main Frame (wadah utama UI)
-mainFrame.Name = "TeleportUI_Frame"
-mainFrame.Size = UDim2.new(0, 300, 0, 120) -- Ukuran frame
-mainFrame.Position = UDim2.new(0.5, -150, 0.5, -60) -- Posisi di tengah layar
-mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45) -- Warna latar belakang gelap
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true -- Memungkinkan frame digeser
-mainFrame.Draggable = true -- Membuat frame bisa digeser-geser
-mainFrame.Parent = playerGui
-
--- Konfigurasi Title Label (Judul UI)
-titleLabel.Name = "Title"
-titleLabel.Size = UDim2.new(1, 0, 0, 30)
-titleLabel.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+titleLabel.Name = "TitleLabel"
+titleLabel.Size = UDim2.new(1, -30, 1, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
 titleLabel.BorderSizePixel = 0
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.Font = Enum.Font.SourceSansBold
-titleLabel.Text = "Teleport ke Pemain"
+titleLabel.Font = Enum.Font.SourceSansSemibold
+titleLabel.Text = "Teleport"
 titleLabel.TextSize = 16
-titleLabel.Parent = mainFrame
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.Parent = titleBar
 
--- Konfigurasi TextBox (untuk input nama pemain)
+-- Tombol Tutup (Close Button)
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 30, 1, 0)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.BackgroundColor3 = titleBar.BackgroundColor3
+closeButton.BorderSizePixel = 0
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+closeButton.TextSize = 20
+closeButton.Parent = titleBar
+
+-- TextBox untuk Input Nama
+local nameTextBox = Instance.new("TextBox")
 nameTextBox.Name = "PlayerNameTextBox"
-nameTextBox.Size = UDim2.new(1, -20, 0, 30)
-nameTextBox.Position = UDim2.new(0.5, -140, 0, 45)
-nameTextBox.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+nameTextBox.Size = UDim2.new(1, -20, 0, 35)
+nameTextBox.Position = UDim2.new(0, 10, 0, 40)
+nameTextBox.BackgroundColor3 = Color3.fromRGB(40, 42, 47)
 nameTextBox.BorderSizePixel = 0
-nameTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+nameTextBox.TextColor3 = Color3.fromRGB(220, 220, 220)
 nameTextBox.PlaceholderText = "Ketik nama pemain..."
+nameTextBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
 nameTextBox.Font = Enum.Font.SourceSans
 nameTextBox.TextSize = 14
 nameTextBox.ClearTextOnFocus = false
 nameTextBox.Parent = mainFrame
 
--- Konfigurasi TextButton (tombol untuk teleport)
+-- Tombol Teleport
+local teleportButton = Instance.new("TextButton")
 teleportButton.Name = "TeleportButton"
-teleportButton.Size = UDim2.new(1, -20, 0, 30)
-teleportButton.Position = UDim2.new(0.5, -140, 0, 80)
-teleportButton.BackgroundColor3 = Color3.fromRGB(85, 85, 255)
+teleportButton.Size = UDim2.new(1, -20, 0, 35)
+teleportButton.Position = UDim2.new(0, 10, 0, 85)
+teleportButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 teleportButton.BorderSizePixel = 0
 teleportButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 teleportButton.Font = Enum.Font.SourceSansBold
@@ -66,48 +107,71 @@ teleportButton.Text = "TELEPORT"
 teleportButton.TextSize = 16
 teleportButton.Parent = mainFrame
 
--- Fungsi untuk melakukan teleportasi
+-- Fungsi Teleportasi
 local function teleportToPlayer(targetPlayerName)
     local targetPlayer = Players:FindFirstChild(targetPlayerName)
-    
     if not targetPlayer then
         print("Pemain tidak ditemukan: " .. targetPlayerName)
         return
     end
-    
     if targetPlayer == localPlayer then
         print("Anda tidak bisa teleport ke diri sendiri.")
         return
     end
-    
+
     local localCharacter = localPlayer.Character
     local targetCharacter = targetPlayer.Character
-    
-    if not localCharacter or not targetCharacter then
-        print("Karakter tidak ditemukan.")
+    if not (localCharacter and targetCharacter and localCharacter:FindFirstChild("HumanoidRootPart") and targetCharacter:FindFirstChild("HumanoidRootPart")) then
+        print("Karakter tidak valid atau tidak ditemukan.")
         return
     end
     
-    local localRootPart = localCharacter:FindFirstChild("HumanoidRootPart")
-    local targetRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
-    
-    if not localRootPart or not targetRootPart then
-        print("HumanoidRootPart tidak ditemukan.")
-        return
-    end
-    
-    print("Teleportasi ke " .. targetPlayer.Name .. "...")
-    localRootPart.CFrame = targetRootPart.CFrame + Vector3.new(0, 5, 0)
+    print("Mencoba teleportasi ke " .. targetPlayer.Name .. "...")
+    localCharacter.HumanoidRootPart.CFrame = targetCharacter.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
+    print("Teleportasi berhasil.")
 end
 
--- Menghubungkan fungsi ke event klik pada tombol
+-- Event Listeners
 teleportButton.MouseButton1Click:Connect(function()
-    local playerName = nameTextBox.Text
-    if playerName and playerName ~= "" then
-        teleportToPlayer(playerName)
+    if nameTextBox.Text ~= "" then
+        teleportToPlayer(nameTextBox.Text)
     else
-        print("Silakan masukkan nama pemain terlebih dahulu.")
+        print("Nama pemain tidak boleh kosong.")
     end
 end)
 
-print("UI Teleportasi berhasil dimuat.")
+closeButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+    print("UI Teleportasi ditutup.")
+end)
+
+-- Fungsi Drag Kustom
+local dragging = false
+local dragStart
+local startPos
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+titleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if dragging then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end
+end)
+
+-- Menempatkan GUI ke pemain
+screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+print("GUI Teleportasi berhasil dimuat ke PlayerGui.")
