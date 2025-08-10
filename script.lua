@@ -1,19 +1,18 @@
 --[[
-    Skrip Universal v5.1 - Teleport & Fling
+    Skrip Universal v6.0 - Teleport & Fling
     
-    Perbaikan Bug (Fling):
-    - Memperbaiki masalah di mana fitur fling tidak berfungsi.
-    - Menghubungkan VectorForce ke Attachment-nya dengan benar (force.Attachment0).
-    - Meningkatkan kekuatan fling secara signifikan untuk efek yang lebih dramatis.
+    Pembaruan Fitur:
+    - Mengganti total mekanisme Fling dengan metode proyektil tak terlihat.
+    - Metode ini lebih andal dan kuat untuk memastikan target terpental.
 ]]
 
 -- Mencegah skrip berjalan dua kali
-if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalMultiToolGUI_v5_1") then
-    print("Skrip Multi-Tool v5.1 sudah berjalan.")
+if game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UniversalMultiToolGUI_v6") then
+    print("Skrip Multi-Tool v6 sudah berjalan.")
     return
 end
 
-print("Memulai Skrip Multi-Tool Universal v5.1...")
+print("Memulai Skrip Multi-Tool Universal v6.0...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -25,7 +24,7 @@ local localPlayer = Players.LocalPlayer
 
 -- Membuat ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "UniversalMultiToolGUI_v5_1"
+screenGui.Name = "UniversalMultiToolGUI_v6"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
@@ -42,22 +41,13 @@ mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
 -- Membuat Title Bar
-local titleBar = Instance.new("Frame", mainFrame)
-titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, 30)
-titleBar.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
-titleBar.BorderSizePixel = 0
--- (Isi dari Title Bar)
+local titleBar = Instance.new("Frame", mainFrame); titleBar.Name = "TitleBar"; titleBar.Size = UDim2.new(1, 0, 0, 30); titleBar.BackgroundColor3 = Color3.fromRGB(48, 51, 57)
 local titleLabel = Instance.new("TextLabel", titleBar); titleLabel.Size = UDim2.new(1, -60, 1, 0); titleLabel.Position = UDim2.new(0, 10, 0, 0); titleLabel.BackgroundColor3 = titleBar.BackgroundColor3; titleLabel.Font = Enum.Font.SourceSansSemibold; titleLabel.Text = "Multi-Tool"; titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255); titleLabel.TextSize = 16; titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 local closeButton = Instance.new("TextButton", titleBar); closeButton.Size = UDim2.new(0, 30, 1, 0); closeButton.Position = UDim2.new(1, -30, 0, 0); closeButton.BackgroundColor3 = titleBar.BackgroundColor3; closeButton.Font = Enum.Font.SourceSansBold; closeButton.Text = "X"; closeButton.TextColor3 = Color3.fromRGB(200, 200, 200); closeButton.TextSize = 20
 local minimizeButton = Instance.new("TextButton", titleBar); minimizeButton.Size = UDim2.new(0, 30, 1, 0); minimizeButton.Position = UDim2.new(1, -60, 0, 0); minimizeButton.BackgroundColor3 = titleBar.BackgroundColor3; minimizeButton.Font = Enum.Font.SourceSansBold; minimizeButton.Text = "_"; minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200); minimizeButton.TextSize = 20
 
 -- Konten di dalam Frame
-local contentHolder = Instance.new("Frame", mainFrame)
-contentHolder.Name = "ContentHolder"
-contentHolder.Size = UDim2.new(1, 0, 1, -30)
-contentHolder.Position = UDim2.new(0, 0, 0, 30)
-contentHolder.BackgroundTransparency = 1
+local contentHolder = Instance.new("Frame", mainFrame); contentHolder.Name = "ContentHolder"; contentHolder.Size = UDim2.new(1, 0, 1, -30); contentHolder.Position = UDim2.new(0, 0, 0, 30); contentHolder.BackgroundTransparency = 1
 
 -- Navbar
 local navBar = Instance.new("Frame", contentHolder); navBar.Name = "NavBar"; navBar.Size = UDim2.new(1, -20, 0, 30); navBar.Position = UDim2.new(0, 10, 0, 10); navBar.BackgroundColor3 = Color3.fromRGB(40, 42, 47)
@@ -94,34 +84,59 @@ end
 navTeleportBtn.MouseButton1Click:Connect(function() switchPage("Teleport") end)
 navFlingBtn.MouseButton1Click:Connect(function() switchPage("Fling") end)
 
--- === FUNGSI FLING YANG DIPERBAIKI ===
+-- === FUNGSI FLING BARU (METODE PROYEKTIL) ===
 local function flingPlayer(targetPlayerName)
     local targetPlayer = Players:FindFirstChild(targetPlayerName)
-    if not (targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")) then
-        print("Target tidak valid untuk di-fling.")
+    local myCharacter = localPlayer.Character
+    
+    if not (targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")) then
+        print("Target atau karakter lokal tidak valid.")
         return
     end
-    print("Mencoba fling " .. targetPlayer.Name .. "...")
-    local rootPart = targetPlayer.Character.HumanoidRootPart
     
-    -- Buat titik tumpu untuk gaya
-    local attachment = Instance.new("Attachment", rootPart)
+    print("Mempersiapkan proyektil untuk " .. targetPlayer.Name .. "...")
     
-    -- Buat objek gaya
-    local force = Instance.new("VectorForce")
-    force.Parent = rootPart
-    force.Attachment0 = attachment -- INI BAGIAN PENTING YANG DIPERBAIKI
-    force.Force = Vector3.new(0, 750000, 0) -- Kekuatan ke atas yang sangat besar
-    force.RelativeTo = Enum.ActuatorRelativeTo.World
+    local startPos = myCharacter.HumanoidRootPart.Position
+    local targetPos = targetPlayer.Character.HumanoidRootPart.Position
     
-    -- Tambahkan sedikit gaya acak ke samping agar lebih dramatis
-    force.Force = force.Force + Vector3.new(math.random(-150000, 150000), 0, math.random(-150000, 150000))
+    local projectile = Instance.new("Part")
+    projectile.Size = Vector3.new(1, 1, 1)
+    projectile.Position = startPos
+    projectile.Transparency = 1
+    projectile.CanCollide = false
+    projectile.Anchored = false
+    projectile.Massless = true
+    projectile.Parent = workspace
     
-    -- Hapus gaya dan titik tumpu setelah sepersekian detik agar efeknya seperti ledakan
-    Debris:AddItem(force, 0.2)
-    Debris:AddItem(attachment, 0.25)
+    -- Arahkan proyektil ke target
+    local direction = (targetPos - startPos).Unit
+    projectile.CFrame = CFrame.new(startPos, targetPos)
     
-    print(targetPlayer.Name .. " berhasil di-fling!")
+    -- Tembakkan dengan kecepatan sangat tinggi
+    projectile.Velocity = direction * 3000 -- Kecepatan bisa disesuaikan
+    
+    local connection
+    connection = projectile.Touched:Connect(function(hit)
+        -- Periksa apakah yang ditabrak adalah bagian dari karakter target
+        if hit and hit.Parent and hit.Parent:FindFirstChild("Humanoid") and hit.Parent.Name == targetPlayer.Name then
+            print("Proyektil mengenai " .. targetPlayer.Name .. "!")
+            
+            local targetRoot = hit.Parent:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                -- Berikan gaya dorong yang sangat kuat
+                targetRoot.Velocity = Vector3.new(math.random(-500, 500), 1000, math.random(-500, 500))
+            end
+            
+            -- Hancurkan proyektil dan putuskan koneksi setelah mengenai target
+            projectile:Destroy()
+            if connection then
+                connection:Disconnect()
+            end
+        end
+    end)
+    
+    -- Hancurkan proyektil setelah beberapa detik jika tidak mengenai apa pun
+    Debris:AddItem(projectile, 5)
 end
 
 -- Fungsi Teleport (tidak berubah)
@@ -145,7 +160,7 @@ function updatePlayerList()
     playerListFrame.CanvasSize = UDim2.new(0, 0, 0, uiGridLayout.AbsoluteContentSize.Y)
 end
 
--- Event Listeners (tidak berubah)
+-- Event Listeners
 teleportButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then teleportToPlayer(nameTextBox.Text) end end)
 flingButton.MouseButton1Click:Connect(function() if nameTextBox.Text ~= "" then flingPlayer(nameTextBox.Text) end end)
 closeButton.MouseButton1Click:Connect(function() screenGui:Destroy() end)
@@ -155,7 +170,7 @@ local dragging, dragStart, startPos; titleBar.InputBegan:Connect(function(input)
 
 -- Inisialisasi
 screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-print("GUI Multi-Tool v5.1 berhasil dimuat.")
+print("GUI Multi-Tool v6.0 berhasil dimuat.")
 updatePlayerList()
 Players.PlayerAdded:Connect(updatePlayerList)
 Players.PlayerRemoving:Connect(updatePlayerList)
